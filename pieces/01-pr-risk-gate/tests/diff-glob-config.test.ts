@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { loadConfig } from '../src/config.ts';
 import { parseDiff } from '../src/diff.ts';
-import { globToRegExp, matchesAny } from '../src/glob.ts';
 import { maxLevel } from '../src/types.ts';
 import { fixture } from './helpers.ts';
 
@@ -67,31 +66,6 @@ describe('AC-1 parseDiff', () => {
   it('ignores text before the first file and tolerates a malformed header', () => {
     expect(parseDiff('hello\nworld')).toEqual([]);
     expect(parseDiff('diff --git weird')[0]?.path).toBe('');
-  });
-});
-
-describe('glob', () => {
-  it.each([
-    ['**/auth/**', 'src/auth/session.ts', true],
-    ['**/auth/**', 'auth/x.ts', true],
-    ['**/auth/**', 'src/author/x.ts', false],
-    ['*.md', 'docs/guide.md', true],
-    ['*.md', 'README.md', true],
-    ['*.md', 'a.mdx', false],
-    ['.github/workflows/**', '.github/workflows/ci.yml', true],
-    ['src/*.ts', 'src/a/b.ts', false],
-    ['src/**', 'src/a/b.ts', true],
-    ['a?c', 'abc', true],
-    ['**/*.tf', 'infra/main.tf', true],
-    ['**/*iam*.json', 'x/my-iam-role.json', true],
-    ['package-lock.json', 'web/package-lock.json', true],
-  ])('%s vs %s -> %s', (glob, path, expected) => {
-    expect(globToRegExp(glob).test(path)).toBe(expected);
-  });
-
-  it('matchesAny', () => {
-    expect(matchesAny('a.ts', ['*.md', '*.ts'])).toBe(true);
-    expect(matchesAny('a.ts', [])).toBe(false);
   });
 });
 

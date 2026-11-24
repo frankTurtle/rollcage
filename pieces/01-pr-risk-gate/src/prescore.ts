@@ -1,5 +1,5 @@
 import type { GateConfig } from './config.js';
-import { matchesAny } from './glob.js';
+import { matchesAny } from '@adl/shared';
 import type { DiffFile, RiskLevel } from './types.js';
 
 export interface PreScore {
