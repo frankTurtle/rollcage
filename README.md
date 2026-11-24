@@ -3,7 +3,7 @@
 Working code, tests and CI for making AI-assisted software delivery safe to ship, and for
 measuring whether it is paying off.
 
-> Status: Phase 0 (skeleton) is done. Piece 01 is built and in review. The rest are planned.
+> Status: Phase 0 (skeleton) is done. Piece 01 is done. The rest are planned.
 
 ## For engineering leaders
 
@@ -18,7 +18,7 @@ CI, and each has a demo script.
 
 | # | Piece | Problem | What it proves | Metric | Status | Video |
 |---|-------|---------|----------------|--------|--------|-------|
-| 01 | [pr-risk-gate](pieces/01-pr-risk-gate/README.md) | Risky AI-assisted changes merge without extra scrutiny | High-risk PRs without tests are blocked, with cited reasons | Change failure rate; % high-risk PRs shipped with tests | MVP, in review | TBD |
+| 01 | [pr-risk-gate](pieces/01-pr-risk-gate/README.md) | Risky AI-assisted changes merge without extra scrutiny | High-risk PRs without tests are blocked, with cited reasons | Change failure rate; % high-risk PRs shipped with tests | MVP, done | TBD |
 | 02 | agent-policy | Engineers already use coding agents with no written rules | A one-page policy backed by enforced guardrails and an audit trail | Blocked risky actions per week; % sessions with complete audit trail | MVP, planned | TBD |
 | 03 | dora-metrics | No proof AI is paying off | Delivery metrics before and after an AI rollout date | DORA metrics | MVP, planned | TBD |
 | 04 | secrets-guard | A leaked cloud key can be abused within hours | Three layers: pre-commit, CI scan, automatic key deactivation | Leaks blocked pre-commit; time from leak to deactivation | MVP, planned | TBD |
