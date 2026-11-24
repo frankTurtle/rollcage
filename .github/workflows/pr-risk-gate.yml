@@ -1,0 +1,30 @@
+name: pr-risk-gate
+
+# The repository runs its own gate on its own pull requests.
+# Uses the pull_request trigger (not pull_request_target): fork code never runs with a write token.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  pull_request_review:
+    types: [submitted, dismissed]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: pr-risk-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: ./pieces/01-pr-risk-gate
+        env:
+          # Optional. Without it the gate uses the deterministic pre-score only.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

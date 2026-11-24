@@ -1,0 +1,47 @@
+name: PR risk gate
+description: Score pull-request risk from the diff, post one comment, and enforce test and approval rules.
+author: ai-devsecops-library
+
+inputs:
+  config:
+    description: Path to the risk-gate config, relative to the workspace. Defaults are used if the file is missing.
+    default: risk-gate.yml
+  mode:
+    description: 'Override the config mode: enforce or observe. Empty uses the config value.'
+    default: ''
+  github-token:
+    description: Token with contents:read and pull-requests:write.
+    default: ${{ github.token }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version: 24
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ github.action_path }}/../..
+      run: |
+        corepack enable
+        pnpm install --frozen-lockfile --filter "@adl/pr-risk-gate..."
+    - name: Evaluate pull request
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        RG_CONFIG: ${{ github.workspace }}/${{ inputs.config }}
+        RG_MODE: ${{ inputs.mode }}
+        RG_AUDIT: ${{ runner.temp }}/risk-gate-audit.jsonl
+      run: |
+        args=(evaluate --audit "$RG_AUDIT" --llm auto)
+        [ -f "$RG_CONFIG" ] && args+=(--config "$RG_CONFIG")
+        [ -n "$RG_MODE" ] && args+=(--mode "$RG_MODE")
+        pnpm exec tsx src/bin.ts "${args[@]}"
+    - name: Upload audit log
+      if: always()
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: risk-gate-audit-${{ github.run_id }}-${{ github.run_attempt }}
+        path: ${{ runner.temp }}/risk-gate-audit.jsonl
+        if-no-files-found: ignore
