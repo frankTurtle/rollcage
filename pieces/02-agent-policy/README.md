@@ -46,6 +46,12 @@ complete audit trail. "Good" is 100% complete trails and a weekly review of ever
 - MCP tools are not inspected. Govern them with permission rules.
 - Environment dumps (`env`, `printenv`) are not blocked, and a `Grep` over a whole directory can
   surface a secret file's contents if you do not also set the deny rules in the template.
+- **A call blocked by a `permissions.deny` rule is not in the audit log.** Checked live on
+  2026-11-24: a `Read` of `.env` was refused by the `Read(./.env)` deny rule, and the hook never
+  ran, so no record exists. The docs say the `PermissionDenied` event does not fire for deny
+  rules either. The template keeps the deny rules as a second layer, so the "blocked actions per
+  week" number counts only blocks made by the hook and undercounts the rest. If you need every
+  block on record, drop the `Read(...)` deny rules and let the hook make that decision.
 - The audit log proves what the hooks saw. It cannot show actions taken outside the agent.
 
 ## For engineers
@@ -79,28 +85,28 @@ Claude Code docs on 2026-11-24 ([hooks](https://code.claude.com/docs/en/hooks),
 
 ### Rules enforced by the hook (`src/guard.ts`)
 
-| Rule id              | Blocks                                                                                         |
-| -------------------- | ---------------------------------------------------------------------------------------------- |
-| `secret-read`        | Read, Edit, Write, Grep on secret paths (`.env*`, keys, `.aws/`, `.ssh/`, ...); shell commands that name one |
-| `force-push`         | `git push` with `--force`, `-f`, `--force-with-lease`, or a `+refspec`, also inside `sh -c`    |
-| `write-outside-repo` | Write/Edit outside the repo and allowed scratch dirs; shell redirects and file-changing commands aimed outside |
+| Rule id              | Blocks                                                                                                                        |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `secret-read`        | Read, Edit, Write, Grep on secret paths (`.env*`, keys, `.aws/`, `.ssh/`, ...); shell commands that name one                  |
+| `force-push`         | `git push` with `--force`, `-f`, `--force-with-lease`, or a `+refspec`, also inside `sh -c`                                   |
+| `write-outside-repo` | Write/Edit outside the repo and allowed scratch dirs; shell redirects and file-changing commands aimed outside                |
 | `network-allowlist`  | WebFetch and shell network tools (curl, wget, ssh, git URLs, ...) to hosts not on the allowlist, or with no determinable host |
-| `unparseable`        | A shell command the analyzer cannot parse (unbalanced quotes). Fail closed.                    |
+| `unparseable`        | A shell command the analyzer cannot parse (unbalanced quotes). Fail closed.                                                   |
 
 Everything else is allowed by the hook. Permission rules in `templates/settings.json` add a second layer.
 
 ### Policy to enforcement to evidence
 
-| Policy clause                          | Enforcement                                                            | Evidence                                            |
-| -------------------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------- |
-| 4. Never read or send secrets          | `secret-read` rule; `permissions.deny` Read rules                      | `deny` record with rule `secret-read`               |
-| 4. No force-push                       | `force-push` rule; `permissions.deny` and `ask` Bash rules             | `deny` record with rule `force-push`                |
-| 4. No writes outside the repo          | `write-outside-repo` rule                                              | `deny` record with rule `write-outside-repo`        |
-| 4. No unlisted hosts                   | `network-allowlist` rule; `WebFetch(domain:...)` allow rules           | `deny` record with rule `network-allowlist`         |
-| 3. Pushing needs approval              | `permissions.ask` for `Bash(git push *)`                               | Claude Code permission prompt; `allow` record       |
-| 4. Do not disable guardrails           | `check` fails if hooks are missing or `disableAllHooks` is true        | CI result                                           |
-| 6. Every tool call is logged           | Pre and post hooks, fail closed if the log cannot be written           | Hash-chained `agent.audit.jsonl`; `metrics` command |
-| 1 to 9. A policy exists                | `check` fails if `policy/AI_CODING_AGENT_POLICY.md` is missing or empty | CI result                                           |
+| Policy clause                 | Enforcement                                                             | Evidence                                            |
+| ----------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------- |
+| 4. Never read or send secrets | `secret-read` rule; `permissions.deny` Read rules                       | `deny` record with rule `secret-read`               |
+| 4. No force-push              | `force-push` rule; `permissions.deny` and `ask` Bash rules              | `deny` record with rule `force-push`                |
+| 4. No writes outside the repo | `write-outside-repo` rule                                               | `deny` record with rule `write-outside-repo`        |
+| 4. No unlisted hosts          | `network-allowlist` rule; `WebFetch(domain:...)` allow rules            | `deny` record with rule `network-allowlist`         |
+| 3. Pushing needs approval     | `permissions.ask` for `Bash(git push *)`                                | Claude Code permission prompt; `allow` record       |
+| 4. Do not disable guardrails  | `check` fails if hooks are missing or `disableAllHooks` is true         | CI result                                           |
+| 6. Every tool call is logged  | Pre and post hooks, fail closed if the log cannot be written            | Hash-chained `agent.audit.jsonl`; `metrics` command |
+| 1 to 9. A policy exists       | `check` fails if `policy/AI_CODING_AGENT_POLICY.md` is missing or empty | CI result                                           |
 
 ### Install
 
@@ -117,14 +123,14 @@ This repository runs the same hooks from source (`tsx`) in its own `.claude/sett
 
 ### Config (`.claude/agent-policy.yml`)
 
-| Key                | Default                                  | Meaning                                                        |
-| ------------------ | ---------------------------------------- | -------------------------------------------------------------- |
-| `allowed_hosts`    | docs and package hosts, loopback         | Hosts the agent may contact. `*.example.com` matches subdomains. |
-| `allow_write_dirs` | `/tmp`, `/private/tmp`, `~/.claude`      | Extra directories outside the repo that may be written.        |
-| `secret_paths`     | built-in list                            | Globs treated as secrets. Replaces the default list when set.  |
-| `secret_exceptions`| `.env.example`, `.env.sample`, `.env.template` | Secret-looking paths that are fine to read.              |
-| `allow_web_search` | `true`                                   | WebSearch is not host-scoped, so it is a switch.               |
-| `audit_required`   | `true`                                   | If the audit log cannot be written, block the call.            |
+| Key                 | Default                                        | Meaning                                                          |
+| ------------------- | ---------------------------------------------- | ---------------------------------------------------------------- |
+| `allowed_hosts`     | docs and package hosts, loopback               | Hosts the agent may contact. `*.example.com` matches subdomains. |
+| `allow_write_dirs`  | `/tmp`, `/private/tmp`, `~/.claude`            | Extra directories outside the repo that may be written.          |
+| `secret_paths`      | built-in list                                  | Globs treated as secrets. Replaces the default list when set.    |
+| `secret_exceptions` | `.env.example`, `.env.sample`, `.env.template` | Secret-looking paths that are fine to read.                      |
+| `allow_web_search`  | `true`                                         | WebSearch is not host-scoped, so it is a switch.                 |
+| `audit_required`    | `true`                                         | If the audit log cannot be written, block the call.              |
 
 ### Commands
 
@@ -156,13 +162,13 @@ pnpm --filter @adl/agent-policy agent-policy metrics --log .claude/audit/agent.a
 
 ### Runtime dependencies
 
-| Package       | Why                                                      |
-| ------------- | -------------------------------------------------------- |
-| `zod`         | Validate hook input and config.                          |
-| `yaml`        | Parse `agent-policy.yml`.                                |
-| `@adl/shared` | Audit logger and glob matcher (workspace).               |
-| `tsx`         | Run TypeScript hooks from source in this repo.           |
-| `esbuild` (dev) | Bundle the hook into one file adopters can copy.       |
+| Package         | Why                                              |
+| --------------- | ------------------------------------------------ |
+| `zod`           | Validate hook input and config.                  |
+| `yaml`          | Parse `agent-policy.yml`.                        |
+| `@adl/shared`   | Audit logger and glob matcher (workspace).       |
+| `tsx`           | Run TypeScript hooks from source in this repo.   |
+| `esbuild` (dev) | Bundle the hook into one file adopters can copy. |
 
 ### Security notes
 
@@ -175,5 +181,8 @@ pnpm --filter @adl/agent-policy agent-policy metrics --log .claude/audit/agent.a
 
 ### Status
 
-Draft for review. Not yet exercised inside a live Claude Code session: the hook is tested with
-recorded payload shapes taken from the docs, not with a running agent. The demo replays payloads.
+Draft for review. The unit tests use payload shapes taken from the docs. In addition, this
+repository's own `.claude/settings.json` ran the hooks during this build, and the live records have
+the documented fields (`session_id`, `tool_use_id`, `tool_name`). The hook's block path was checked
+live only through the permission-rule layer (see Limits), not through an exit-2 block in a running
+agent. The demo replays payloads; it does not drive a real agent.
