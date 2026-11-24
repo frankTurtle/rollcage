@@ -3,6 +3,16 @@
  * A pattern with no `/` matches the file name in any directory (like .gitignore).
  */
 export function globToRegExp(glob: string): RegExp {
+  const cached = CACHE.get(glob);
+  if (cached) return cached;
+  const compiled = compile(glob);
+  CACHE.set(glob, compiled);
+  return compiled;
+}
+
+const CACHE = new Map<string, RegExp>();
+
+function compile(glob: string): RegExp {
   let re = '';
   for (let i = 0; i < glob.length; i++) {
     const c = glob[i] as string;

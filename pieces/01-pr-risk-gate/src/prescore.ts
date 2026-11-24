@@ -8,10 +8,7 @@ export interface PreScore {
   score: number;
   /** Risk category name to the non-test, non-doc files that triggered it. */
   categories: Record<string, string[]>;
-  sourceLines: number;
-  testLines: number;
   hasTestChanges: boolean;
-  docsOnly: boolean;
   reasons: string[];
 }
 
@@ -72,10 +69,7 @@ export function prescore(files: DiffFile[], config: GateConfig): PreScore {
     level,
     score,
     categories,
-    sourceLines,
-    testLines,
     hasTestChanges: testLines > 0,
-    docsOnly,
     reasons,
   };
 }

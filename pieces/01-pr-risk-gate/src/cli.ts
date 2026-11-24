@@ -1,13 +1,12 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
-import { AuditLogger } from '@adl/shared';
+import { AuditLogger, readAuditRecords } from '@adl/shared';
 import { loadConfig } from './config.js';
 import { GitHubApi, GitHubIO } from './github.js';
 import type { FetchLike, PrRef } from './github.js';
-import { selectLlm } from './llm-select.js';
-import type { LlmMode } from './llm-select.js';
+import { parseLlmMode, selectLlm } from './llm-select.js';
 import { LocalIO } from './local-io.js';
-import { computeMetrics, formatMetrics, readRecords } from './metrics.js';
+import { computeMetrics, formatMetrics } from './metrics.js';
 import { runGate } from './run.js';
 import type { GateResult } from './run.js';
 import { writeSyntheticHistory } from './synthetic.js';
@@ -107,17 +106,18 @@ async function evaluate(args: string[], deps: CliDeps): Promise<number> {
 
   const result = await runGate({
     io,
-    llm: selectLlm(values.llm as LlmMode, deps.env, values.fixtures),
+    llm: selectLlm(parseLlmMode(values.llm), deps.env, values.fixtures),
     config,
     ...(values.audit ? { audit: new AuditLogger(values.audit) } : {}),
   });
-  deps.out(summarize(result, config.mode));
+  deps.out(summarize(result));
   return result.exitCode;
 }
 
-export function summarize(r: GateResult, mode: 'enforce' | 'observe'): string {
-  const status =
-    r.policy.violations.length === 0 ? 'PASS' : mode === 'enforce' ? 'FAIL' : 'WOULD BLOCK';
+const STATUS = { pass: 'PASS', fail: 'FAIL', 'observe-would-fail': 'WOULD BLOCK' } as const;
+
+export function summarize(r: GateResult): string {
+  const status = STATUS[r.policy.verdict];
   const model = r.review.source === 'model' ? r.review.riskLevel : 'not used';
   return [
     `${status}  level=${r.level.toUpperCase()} (pre-score ${r.pre.level}, model ${model})`,
@@ -132,7 +132,7 @@ function metrics(args: string[], deps: CliDeps): number {
     options: { log: { type: 'string' }, label: { type: 'string' } },
   });
   if (!values.log) throw new Error('metrics needs --log <audit.jsonl>');
-  deps.out(formatMetrics(values.label ?? values.log, computeMetrics(readRecords(values.log))));
+  deps.out(formatMetrics(values.label ?? values.log, computeMetrics(readAuditRecords(values.log))));
   return 0;
 }
 

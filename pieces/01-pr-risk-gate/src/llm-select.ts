@@ -3,6 +3,11 @@ import type { LlmClient, LlmResponse } from '@adl/shared';
 
 export type LlmMode = 'auto' | 'live' | 'replay' | 'none';
 
+export function parseLlmMode(value: string): LlmMode {
+  if (value === 'auto' || value === 'live' || value === 'replay' || value === 'none') return value;
+  throw new Error('--llm must be auto, live, replay or none');
+}
+
 /** Stands in when no model is configured. Always fails, so the gate uses its deterministic result. */
 export class UnavailableLlm implements LlmClient {
   constructor(private readonly why: string) {}

@@ -1,12 +1,18 @@
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { AuditLogger, FakeLlm, RecordReplayLlm, verifyAuditChain } from '@adl/shared';
+import {
+  AuditLogger,
+  FakeLlm,
+  RecordReplayLlm,
+  readAuditRecords,
+  verifyAuditChain,
+} from '@adl/shared';
 import { describe, expect, it } from 'vitest';
 import { runCli } from '../src/cli.ts';
 import { loadConfig } from '../src/config.ts';
 import { selectLlm, UnavailableLlm } from '../src/llm-select.ts';
-import { computeMetrics, formatMetrics, readRecords } from '../src/metrics.ts';
+import { computeMetrics, formatMetrics } from '../src/metrics.ts';
 import { runGate } from '../src/run.ts';
 import { seededRandom, writeSyntheticHistory } from '../src/synthetic.ts';
 import { ctx, demoConfig, DEMO_CONFIG, FX, fixture, LLM_FX, MemoryIO } from './helpers.ts';
@@ -30,7 +36,7 @@ describe('runGate', () => {
     });
     expect(r.exitCode).toBe(1);
     expect(io.published).toHaveLength(1);
-    const [rec] = readRecords(log);
+    const [rec] = readAuditRecords(log);
     expect(rec).toMatchObject({
       actor: 'pr-risk-gate',
       action: 'evaluate',
@@ -74,7 +80,7 @@ describe('runGate', () => {
     });
     expect(r.review.source).toBe('fallback');
     expect(r.exitCode).toBe(1);
-    expect(r.comment).toContain('Model review unavailable');
+    expect(r.review.assumptions[0]).toContain('Model review unavailable');
   });
 
   it('passes with tests and two approvals, and still never approves anything itself', async () => {
@@ -93,7 +99,7 @@ describe('runGate', () => {
       audit: new AuditLogger(log),
     });
     expect(r.exitCode).toBe(0);
-    expect(readRecords(log)[0]?.decision).toBe('observe-would-fail');
+    expect(readAuditRecords(log)[0]?.decision).toBe('observe-would-fail');
   });
 
   it('records pass for a clean PR', async () => {
@@ -104,7 +110,7 @@ describe('runGate', () => {
       config: demoConfig(),
       audit: new AuditLogger(log),
     });
-    expect(readRecords(log)[0]?.decision).toBe('pass');
+    expect(readAuditRecords(log)[0]?.decision).toBe('pass');
   });
 });
 
@@ -181,7 +187,7 @@ describe('AC-13 metrics', () => {
       detail: { pr: 9 },
     });
     a.append({ actor: 'pr-risk-gate', action: 'evaluate', input: 0, decision: 'x' });
-    const m = computeMetrics(readRecords(log));
+    const m = computeMetrics(readAuditRecords(log));
     expect(m).toEqual({
       prs: 3,
       highRisk: 2,
@@ -210,8 +216,8 @@ describe('AC-13 metrics', () => {
     writeSyntheticHistory(c, { seed: 7, prs: 60, gated: true });
     expect(readFileSync(a, 'utf8')).toBe(readFileSync(b, 'utf8'));
     expect(verifyAuditChain(a).ok).toBe(true);
-    const before = computeMetrics(readRecords(a));
-    const after = computeMetrics(readRecords(c));
+    const before = computeMetrics(readAuditRecords(a));
+    const after = computeMetrics(readAuditRecords(c));
     expect(before.pctHighRiskWithTests).toBeLessThan(100);
     expect(after.pctHighRiskWithTests).toBe(100);
     expect(after.prs).toBe(60);

@@ -62,13 +62,12 @@ describe('review', () => {
 
   it('falls back when the model call fails', async () => {
     const r = await review(new FakeLlm([new Error('503'), new Error('503')]));
-    expect(r).toMatchObject({ source: 'fallback', fallbackReason: '503' });
+    expect(r).toMatchObject({ source: 'fallback' });
   });
 
   it('truncates a long diff, tells the model, and records the limit as an assumption', async () => {
     const llm = new FakeLlm([reply()]);
     const r = await review(llm, loadConfig('max_diff_chars: 200'));
-    expect(r.diffTruncated).toBe(true);
     expect(llm.calls[0]?.prompt).toContain('cut at 200 characters');
     expect(r.assumptions.some((a) => a.includes('cut at 200'))).toBe(true);
   });
@@ -99,7 +98,7 @@ describe('AC-12 comment', () => {
       approvals: [],
       config: cfg,
     });
-    return renderComment({ prNumber: 3, mode: cfg.mode, level, pre, review: rev, policy });
+    return renderComment({ mode: cfg.mode, level, pre, review: rev, policy });
   };
 
   it('has the marker, verdict, citations, assumptions and the never-approves note', async () => {
@@ -134,7 +133,7 @@ describe('AC-12 comment', () => {
   });
 
   it('labels observe mode, pass, and the no-rules case', () => {
-    const base = { prNumber: 1, level: 'low' as const, pre: prescore([], config) };
+    const base = { level: 'low' as const, pre: prescore([], config) };
     const review0 = {
       riskLevel: 'low' as const,
       reasons: [],
@@ -142,13 +141,12 @@ describe('AC-12 comment', () => {
       assumptions: [],
       source: 'fallback' as const,
       droppedReasons: 0,
-      diffTruncated: false,
     };
     const ok = renderComment({
       ...base,
       mode: 'enforce',
       review: review0,
-      policy: { violations: [], approvers: [], blocked: false },
+      policy: { violations: [], approvers: [], verdict: 'pass' as const },
     });
     expect(ok).toContain('LOW risk, pass');
     expect(ok).toContain('No risk rules matched.');
@@ -158,7 +156,7 @@ describe('AC-12 comment', () => {
       ...base,
       mode: 'observe',
       review: review0,
-      policy: { violations: violation, approvers: [], blocked: false },
+      policy: { violations: violation, approvers: [], verdict: 'observe-would-fail' as const },
     });
     expect(obs).toContain('would block (observe mode)');
   });

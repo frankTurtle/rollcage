@@ -6,7 +6,7 @@ const Category = z.object({
   paths: z.array(z.string().min(1)).min(1),
 });
 
-export const DEFAULT_RISK_PATHS: Record<string, z.infer<typeof Category>> = {
+const DEFAULT_RISK_PATHS: Record<string, z.infer<typeof Category>> = {
   auth: {
     level: 'high',
     paths: ['**/auth/**', '**/*auth*', '**/*login*', '**/*jwt*', '**/*cognito*', '**/*password*'],
@@ -50,7 +50,7 @@ export const DEFAULT_RISK_PATHS: Record<string, z.infer<typeof Category>> = {
   },
 };
 
-export const DEFAULT_TEST_PATHS = [
+const DEFAULT_TEST_PATHS = [
   '**/tests/**',
   '**/test/**',
   '**/__tests__/**',
@@ -61,7 +61,7 @@ export const DEFAULT_TEST_PATHS = [
   '*_test.go',
 ];
 
-export const DEFAULT_DOC_PATHS = ['*.md', '*.mdx', '*.rst', 'docs/**', 'LICENSE', 'CHANGELOG*'];
+const DEFAULT_DOC_PATHS = ['*.md', '*.mdx', '*.rst', 'docs/**', 'LICENSE', 'CHANGELOG*'];
 
 const Thresholds = z.object({
   medium_diff_lines: z.number().int().positive().default(100),

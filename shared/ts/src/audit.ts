@@ -63,6 +63,14 @@ export class AuditLogger {
   }
 }
 
+/** Read every record from an audit log. Throws on a line that is not JSON. */
+export function readAuditRecords(path: string): AuditRecord[] {
+  return readFileSync(path, 'utf8')
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as AuditRecord);
+}
+
 export interface ChainCheck {
   ok: boolean;
   records: number;

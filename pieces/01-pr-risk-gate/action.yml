@@ -34,7 +34,7 @@ runs:
         RG_MODE: ${{ inputs.mode }}
         RG_AUDIT: ${{ runner.temp }}/risk-gate-audit.jsonl
       run: |
-        args=(evaluate --audit "$RG_AUDIT" --llm auto)
+        args=(evaluate --audit "$RG_AUDIT")
         [ -f "$RG_CONFIG" ] && args+=(--config "$RG_CONFIG")
         [ -n "$RG_MODE" ] && args+=(--mode "$RG_MODE")
         pnpm exec tsx src/bin.ts "${args[@]}"

@@ -32,10 +32,8 @@ export interface ReviewResult {
   requiredChecks: string[];
   assumptions: string[];
   source: 'model' | 'fallback';
-  fallbackReason?: string;
   /** Model reasons removed because they cited a file or line that is not an added line in the diff. */
   droppedReasons: number;
-  diffTruncated: boolean;
 }
 
 const SYSTEM = `You review a pull request diff for risk. Reply with one JSON object only, no prose:
@@ -101,9 +99,7 @@ export async function reviewPr(args: {
         `Model review unavailable (${reason}). The level is the deterministic pre-score only.`,
       ],
       source: 'fallback',
-      fallbackReason: reason,
       droppedReasons: 0,
-      diffTruncated: truncated,
     };
   }
 
@@ -121,6 +117,5 @@ export async function reviewPr(args: {
     assumptions,
     source: 'model',
     droppedReasons: result.value.reasons.length - reasons.length,
-    diffTruncated: truncated,
   };
 }

@@ -14,12 +14,14 @@ export interface PolicyInput {
   config: GateConfig;
 }
 
+export type Verdict = 'pass' | 'fail' | 'observe-would-fail';
+
 export interface PolicyResult {
   violations: Violation[];
   /** Distinct human approvers counted (author and bots removed). */
   approvers: string[];
-  /** True when violations exist and the mode is enforce. */
-  blocked: boolean;
+  /** fail: violations in enforce mode. observe-would-fail: violations in observe mode. */
+  verdict: Verdict;
 }
 
 /** Distinct approvers, excluding the PR author and bot accounts. */
@@ -58,5 +60,7 @@ export function evaluatePolicy(input: PolicyInput): PolicyResult {
     }
   }
 
-  return { violations, approvers, blocked: config.mode === 'enforce' && violations.length > 0 };
+  const verdict: Verdict =
+    violations.length === 0 ? 'pass' : config.mode === 'enforce' ? 'fail' : 'observe-would-fail';
+  return { violations, approvers, verdict };
 }

@@ -17,8 +17,13 @@ export function sanitize(text: string, max = 300): string {
   return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat;
 }
 
+const VERDICT_TEXT = {
+  pass: 'pass',
+  fail: 'blocked',
+  'observe-would-fail': 'would block (observe mode)',
+} as const;
+
 export interface CommentInput {
-  prNumber: number;
   mode: 'enforce' | 'observe';
   level: RiskLevel;
   pre: PreScore;
@@ -28,12 +33,7 @@ export interface CommentInput {
 
 export function renderComment(input: CommentInput): string {
   const { level, pre, review, policy, mode } = input;
-  const verdict =
-    policy.violations.length === 0
-      ? 'pass'
-      : mode === 'enforce'
-        ? 'blocked'
-        : 'would block (observe mode)';
+  const verdict = VERDICT_TEXT[policy.verdict];
   const lines: string[] = [
     COMMENT_MARKER,
     `## PR risk gate: ${level.toUpperCase()} risk, ${verdict}`,

@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import type { AuditRecord } from '@adl/shared';
 import { AUDIT_ACTION, AUDIT_ACTOR } from './run.js';
 
@@ -11,13 +10,6 @@ export interface GateMetrics {
   pctHighRiskWithTests: number | null;
   /** PRs whose latest decision is a failure. */
   blocked: number;
-}
-
-export function readRecords(path: string): AuditRecord[] {
-  return readFileSync(path, 'utf8')
-    .split('\n')
-    .filter(Boolean)
-    .map((line) => JSON.parse(line) as AuditRecord);
 }
 
 export function computeMetrics(records: AuditRecord[]): GateMetrics {

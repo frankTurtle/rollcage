@@ -18,7 +18,6 @@ export interface GateResult {
   pre: PreScore;
   review: ReviewResult;
   policy: PolicyResult;
-  comment: string;
   published: string;
 }
 
@@ -48,7 +47,6 @@ export async function runGate(args: {
   });
 
   const comment = renderComment({
-    prNumber: meta.number,
     mode: config.mode,
     level,
     pre,
@@ -61,12 +59,7 @@ export async function runGate(args: {
     actor: AUDIT_ACTOR,
     action: AUDIT_ACTION,
     input: { pr: meta.number, diffSha256: sha256Hex(diff) },
-    decision:
-      policy.violations.length === 0
-        ? 'pass'
-        : config.mode === 'enforce'
-          ? 'fail'
-          : 'observe-would-fail',
+    decision: policy.verdict,
     detail: {
       pr: meta.number,
       level,
@@ -80,5 +73,5 @@ export async function runGate(args: {
     },
   });
 
-  return { exitCode: policy.blocked ? 1 : 0, level, pre, review, policy, comment, published };
+  return { exitCode: policy.verdict === 'fail' ? 1 : 0, level, pre, review, policy, published };
 }

@@ -10,11 +10,11 @@ const score = (diff: string, yaml?: string) => prescore(parseDiff(diff), loadCon
 describe('AC-2 prescore', () => {
   it('docs-only is low', () => {
     const p = prescore(parseDiff(fixture('pr1-docs.diff')), demoConfig());
-    expect(p).toMatchObject({ level: 'low', score: 0, docsOnly: true });
+    expect(p).toMatchObject({ level: 'low', score: 0 });
   });
 
   it('an empty diff is low', () => {
-    expect(score('')).toMatchObject({ level: 'low', docsOnly: false });
+    expect(score('')).toMatchObject({ level: 'low', score: 0 });
   });
 
   it('auth change is high and names the file', () => {
@@ -89,7 +89,7 @@ const policy = (over: Partial<Parameters<typeof evaluatePolicy>[0]> = {}) =>
 
 describe('AC-7 policy', () => {
   it('passes high risk with tests and two approvals', () => {
-    expect(policy()).toMatchObject({ violations: [], blocked: false });
+    expect(policy()).toMatchObject({ violations: [], verdict: 'pass' });
   });
 
   it('fails high risk with no tests', () => {
@@ -102,7 +102,7 @@ describe('AC-7 policy', () => {
     const r = policy({ approvals: ['a'] });
     expect(r.violations.map((v) => v.id)).toEqual(['approvals-required']);
     expect(r.violations[0]?.message).toContain('has 1');
-    expect(r.blocked).toBe(true);
+    expect(r.verdict).toBe('fail');
   });
 
   it('does not count the author, bots or duplicates', () => {
@@ -133,6 +133,6 @@ describe('AC-8 observe mode', () => {
   it('lists violations but never blocks', () => {
     const r = policy({ hasTestChanges: false, config: loadConfig('mode: observe') });
     expect(r.violations.length).toBeGreaterThan(0);
-    expect(r.blocked).toBe(false);
+    expect(r.verdict).toBe('observe-would-fail');
   });
 });
