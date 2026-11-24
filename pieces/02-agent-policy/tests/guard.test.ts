@@ -349,6 +349,13 @@ describe('config', () => {
     expect(() => loadPolicyConfig('audit_required: "yes"')).toThrow();
   });
 
+  it('derives wildcard checks from the configured secret patterns', () => {
+    const c = ctxFor('secret_paths: ["*.kdbx"]');
+    expect(bash('cat *.kdbx', c)).toMatchObject({ allow: false, rule: 'secret-read' });
+    expect(bash('cat *.md', c).allow).toBe(true);
+    expect(bash('cat .e*', c).allow).toBe(true);
+  });
+
   it('lets a repo extend the secret list and exceptions', () => {
     const c = ctxFor('secret_paths: ["vault.txt"]\nsecret_exceptions: []');
     expect(tool('Read', { file_path: '/repo/vault.txt' }, c).allow).toBe(false);

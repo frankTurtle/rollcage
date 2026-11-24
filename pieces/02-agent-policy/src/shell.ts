@@ -12,7 +12,6 @@ export class ShellParseError extends Error {}
 
 /** Placeholder word for a command substitution; the substituted commands become their own segments. */
 const SUBSTITUTION = '$SUB';
-const NOT_A_FILE = new Set(['<<', '<<-', '<<<']);
 
 /**
  * Split a shell command into simple commands (segments) with words and redirects.
@@ -48,7 +47,7 @@ class Parser {
       if (pending !== null) {
         if (pending === '<<' || pending === '<<-') {
           heredocs.push({ delim: cur, strip: pending === '<<-' });
-        } else if (!NOT_A_FILE.has(pending)) {
+        } else if (pending !== '<<<') {
           redirects.push({ op: pending, target: cur });
         }
         pending = null;
@@ -98,11 +97,7 @@ class Parser {
             done = true;
             this.i++;
           } else if (d === '$' && s[this.i + 1] === '(') {
-            const inner = new Parser(s);
-            inner.i = this.i + 2;
-            inner.run(true);
-            this.i = inner.i;
-            substitute(inner);
+            substitute(this.paren());
           } else if (d === '`') {
             substitute(this.backtick());
           } else {
@@ -112,11 +107,7 @@ class Parser {
         }
         if (!done) throw new ShellParseError('unbalanced double quote');
       } else if (c === '$' && next === '(') {
-        const inner = new Parser(s);
-        inner.i = this.i + 2;
-        inner.run(true);
-        this.i = inner.i;
-        substitute(inner);
+        substitute(this.paren());
       } else if (c === '`') {
         substitute(this.backtick());
       } else if (c === '#' && !has) {
@@ -181,6 +172,14 @@ class Parser {
 
     if (!closed) throw new ShellParseError('unbalanced parenthesis');
     endSegment();
+  }
+
+  private paren(): Parser {
+    const inner = new Parser(this.s);
+    inner.i = this.i + 2;
+    inner.run(true);
+    this.i = inner.i;
+    return inner;
   }
 
   private backtick(): Parser {

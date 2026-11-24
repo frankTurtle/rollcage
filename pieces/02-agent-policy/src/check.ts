@@ -6,10 +6,11 @@ export interface Finding {
   message: string;
 }
 
+/** Text that must appear in a hook command, so an unrelated command does not count. */
+const HOOK_MARKER = 'agent-policy';
+
 export interface CheckOptions {
   policyPath?: string;
-  /** Text that must appear in the hook command, so a random command does not count. */
-  hookMarker?: string;
 }
 
 interface HookGroup {
@@ -25,7 +26,7 @@ const hasHook = (groups: unknown, marker: string): boolean =>
 /** Verify a repository has the policy file and the Claude Code guardrail settings. */
 export function checkRepo(root: string, opts: CheckOptions = {}): Finding[] {
   const policyPath = opts.policyPath ?? 'policy/AI_CODING_AGENT_POLICY.md';
-  const marker = opts.hookMarker ?? 'agent-policy';
+  const marker = HOOK_MARKER;
   const findings: Finding[] = [];
 
   const policy = join(root, policyPath);

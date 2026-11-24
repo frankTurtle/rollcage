@@ -119,7 +119,9 @@ cp pieces/02-agent-policy/templates/settings.json .claude/settings.json
 cp pieces/02-agent-policy/templates/agent-policy.yml .claude/agent-policy.yml
 ```
 
-This repository runs the same hooks from source (`tsx`) in its own `.claude/settings.json`.
+This repository runs the same hooks from source (`tsx`) in its own `.claude/settings.json`, so it
+never runs a stale build. Each tool call starts two hook processes. On one machine the bundle took
+about 65 ms per process and `tsx` about 190 ms, so adopters should use the bundle.
 
 ### Config (`.claude/agent-policy.yml`)
 
@@ -177,7 +179,7 @@ pnpm --filter @adl/agent-policy agent-policy metrics --log .claude/audit/agent.a
 - A deny reason names the rule and the path or host, not the content that triggered it.
 - The audit log is append-only and hash-chained, but a user who can edit the file can rewrite the
   chain. Ship it somewhere the developer cannot modify if you need stronger evidence.
-- Concurrent tool calls are serialized with a lock file so the chain stays valid.
+- Concurrent tool calls are serialized by the shared `AuditLogger`, which appends under a lock file and reads only the end of the log, so the chain stays valid and the cost does not grow with the log.
 
 ### Status
 

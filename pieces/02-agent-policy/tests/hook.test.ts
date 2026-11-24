@@ -1,12 +1,5 @@
 import { spawn } from 'node:child_process';
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  utimesSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,7 +7,6 @@ import { readAuditRecords, verifyAuditChain } from '@adl/shared';
 import { describe, expect, it } from 'vitest';
 import { runCli } from '../src/cli.ts';
 import { runHook } from '../src/hook.ts';
-import { withLock } from '../src/lock.ts';
 
 const PIECE = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FIXED = () => new Date('2026-01-07T10:00:00.000Z');
@@ -177,33 +169,6 @@ describe('AC-8 audit records', () => {
     expect(codes).toEqual(Array(8).fill(0));
     expect(verifyAuditChain(p.audit)).toEqual({ ok: true, records: 8 });
   }, 30_000);
-});
-
-describe('withLock', () => {
-  it('serializes, releases, and returns the result', () => {
-    const lock = join(mkdtempSync(join(tmpdir(), 'lk-')), 'nested', 'x.lock');
-    expect(withLock(lock, () => 42)).toBe(42);
-    expect(existsSync(lock)).toBe(false);
-    expect(() =>
-      withLock(lock, () => {
-        throw new Error('boom');
-      }),
-    ).toThrow('boom');
-    expect(existsSync(lock)).toBe(false);
-  });
-
-  it('times out on a live lock and recovers a stale one', () => {
-    const lock = join(mkdtempSync(join(tmpdir(), 'lk-')), 'x.lock');
-    mkdirSync(lock);
-    expect(() => withLock(lock, () => 1, { timeoutMs: 60, staleMs: 60_000 })).toThrow('timed out');
-    const old = new Date(Date.now() - 60_000);
-    utimesSync(lock, old, old);
-    expect(withLock(lock, () => 'recovered', { staleMs: 1000 })).toBe('recovered');
-  });
-
-  it('rethrows unexpected filesystem errors', () => {
-    expect(() => withLock('/dev/null/x.lock', () => 1)).toThrow();
-  });
 });
 
 describe('cli', () => {

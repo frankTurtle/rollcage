@@ -129,7 +129,7 @@ function run(): void {
     }
   });
   // A second session whose last call never reported back, for the audit-trail metric.
-  const crashed = calls()[7] as Call;
+  const crashed = calls().find((c) => c.label === 'Run: pnpm test') as Call;
   runHook('pre', payload(crashed, 'demo-session-2', 'toolu_90', 'PreToolUse'), deps);
   console.log('\n(simulated: session 2 started a call and then died before the post hook ran)');
   console.log(`\nWhat the agent sees for the first block:\n  ${firstReason}`);
@@ -167,14 +167,14 @@ function metric(): void {
   );
 }
 
-const stage = process.argv[2] ?? 'all';
-const stages: Record<string, () => void> = { before, run, after, metric };
-if (stage === 'all') [before, run, after, metric].forEach((f) => f());
-else
-  (
-    stages[stage] ??
-    (() => {
-      console.error(`unknown stage: ${stage}`);
-      process.exitCode = 2;
-    })
-  )();
+const stages = { before, run, after, metric };
+const requested = process.argv[2] ?? 'all';
+for (const name of requested === 'all' ? Object.keys(stages) : [requested]) {
+  const stage = stages[name as keyof typeof stages];
+  if (!stage) {
+    console.error(`unknown stage: ${name}`);
+    process.exitCode = 2;
+    break;
+  }
+  stage();
+}

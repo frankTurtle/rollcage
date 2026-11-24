@@ -40,20 +40,16 @@ export function deny(rule: Rule, reason: string, target?: string): Decision {
   return { allow: false, rule, reason, ...(target ? { target } : {}) };
 }
 
+const WRITE_TOOLS = new Set(['Edit', 'MultiEdit', 'Write', 'NotebookEdit']);
+const FILE_TOOLS = new Set([...WRITE_TOOLS, 'Read', 'Grep', 'Glob']);
+
 const str = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined);
 
 /** The one entry point: decide whether a tool call may run. Pure and deterministic. */
 export function evaluate(call: ToolCall, ctx: GuardContext): Decision {
   const input = call.tool_input;
+  if (FILE_TOOLS.has(call.tool_name)) return checkFileTool(call, ctx);
   switch (call.tool_name) {
-    case 'Read':
-    case 'Edit':
-    case 'MultiEdit':
-    case 'Write':
-    case 'NotebookEdit':
-    case 'Grep':
-    case 'Glob':
-      return checkFileTool(call, ctx);
     case 'Bash':
       return checkBash(input['command'], call.cwd, ctx, 0);
     case 'WebFetch':
@@ -78,15 +74,9 @@ function isSecretPath(abs: string, ctx: GuardContext): boolean {
   return matchesAny(abs, ctx.config.secret_paths) && !matchesAny(abs, ctx.config.secret_exceptions);
 }
 
-const SECRET_PROBES = [
-  '.env',
-  '.env.local',
-  'id_rsa',
-  'credentials',
-  'secrets.json',
-  'a.pem',
-  'a.key',
-];
+/** File names the configured secret patterns would match (`*` becomes `x`), used to test wildcards. */
+const secretProbes = (ctx: GuardContext): string[] =>
+  ctx.config.secret_paths.filter((p) => !p.includes('/')).map((p) => p.replace(/[*?]/g, 'x'));
 
 /** True if a wildcard such as `.env*` or `*.pem` could expand to a secret file name. */
 function wildcardHitsSecret(token: string, ctx: GuardContext): boolean {
@@ -95,7 +85,8 @@ function wildcardHitsSecret(token: string, ctx: GuardContext): boolean {
   // A bare `*` or `?` says nothing about which files are meant; require some literal text.
   if (glob.replace(/[*?[\]]/g, '').length < 2) return false;
   const re = globToRegExp(glob);
-  return SECRET_PROBES.some(
+  // Shell globs skip dotfiles unless the pattern itself starts with a dot.
+  return secretProbes(ctx).some(
     (p) =>
       (!p.startsWith('.') || glob.startsWith('.')) && re.test(p) && isSecretPath(`/x/${p}`, ctx),
   );
@@ -106,14 +97,19 @@ function insideDir(abs: string, dir: string): boolean {
   return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
 }
 
-function writableDirs(ctx: GuardContext): string[] {
+function isWritable(abs: string, ctx: GuardContext): boolean {
   const extra = ctx.config.allow_write_dirs.map((d) => resolvePath(d, ctx.projectDir, ctx.home));
-  return [ctx.projectDir, ...extra];
+  return [ctx.projectDir, ...extra].some((d) => insideDir(abs, d));
 }
 
-function isWritable(abs: string, ctx: GuardContext): boolean {
-  return writableDirs(ctx).some((d) => insideDir(abs, d));
-}
+const denySecret = (abs: string): Decision =>
+  deny('secret-read', 'Secret and credential files are off limits to agents.', abs);
+const denyOutside = (abs: string): Decision =>
+  deny('write-outside-repo', 'Writing outside the repository is not allowed.', abs);
+
+/** The token itself, plus the value after `=` for forms like `--env-file=.env`. */
+const withValuePart = (t: string): string[] =>
+  t.includes('=') ? [t, t.slice(t.indexOf('=') + 1)] : [t];
 
 const SAFE_SINKS = new Set(['/dev/null', '/dev/stdout', '/dev/stderr']);
 
@@ -126,12 +122,10 @@ function checkWritePath(token: string, cwd: string, ctx: GuardContext): Decision
   }
   const abs = resolvePath(token, cwd, ctx.home);
   if (SAFE_SINKS.has(abs) || isWritable(abs, ctx)) return ALLOW;
-  return deny('write-outside-repo', 'Writing outside the repository is not allowed.', abs);
+  return denyOutside(abs);
 }
 
 // ---------- file tools ----------
-
-const WRITE_TOOLS = new Set(['Edit', 'MultiEdit', 'Write', 'NotebookEdit']);
 
 function checkFileTool(call: ToolCall, ctx: GuardContext): Decision {
   const input = call.tool_input;
@@ -139,11 +133,9 @@ function checkFileTool(call: ToolCall, ctx: GuardContext): Decision {
   if (raw) {
     const abs = resolvePath(raw, call.cwd, ctx.home);
     if (call.tool_name !== 'Glob' && isSecretPath(abs, ctx)) {
-      return deny('secret-read', 'Secret and credential files are off limits to agents.', abs);
+      return denySecret(abs);
     }
-    if (WRITE_TOOLS.has(call.tool_name) && !isWritable(abs, ctx)) {
-      return deny('write-outside-repo', 'Writing outside the repository is not allowed.', abs);
-    }
+    if (WRITE_TOOLS.has(call.tool_name) && !isWritable(abs, ctx)) return denyOutside(abs);
   }
   const glob = str(input['glob']);
   if (call.tool_name === 'Grep' && glob && wildcardHitsSecret(glob, ctx)) {
@@ -219,15 +211,22 @@ function checkBash(raw: unknown, cwd: string, ctx: GuardContext, depth: number):
   }
   let dir = cwd;
   for (const seg of segments) {
-    const decision = checkSegment(seg, dir, ctx, depth);
-    if (!decision.allow) return decision;
     const { cmd, args } = commandOf(seg.words);
+    const decision = checkSegment(seg, cmd, args, dir, ctx, depth);
+    if (!decision.allow) return decision;
     if (cmd === 'cd') dir = args[0] ? resolvePath(args[0], dir, ctx.home) : ctx.home;
   }
   return ALLOW;
 }
 
-function checkSegment(seg: Segment, cwd: string, ctx: GuardContext, depth: number): Decision {
+function checkSegment(
+  seg: Segment,
+  cmd: string,
+  args: string[],
+  cwd: string,
+  ctx: GuardContext,
+  depth: number,
+): Decision {
   for (const r of seg.redirects) {
     const secret = checkSecretToken(r.target, cwd, ctx);
     if (!secret.allow) return secret;
@@ -236,7 +235,6 @@ function checkSegment(seg: Segment, cwd: string, ctx: GuardContext, depth: numbe
       if (!write.allow) return write;
     }
   }
-  const { cmd, args } = commandOf(seg.words);
   if (!cmd) return ALLOW;
 
   if (depth < 3) {
@@ -246,8 +244,14 @@ function checkSegment(seg: Segment, cwd: string, ctx: GuardContext, depth: numbe
       if (!inner.allow) return inner;
     }
   }
-  for (const check of [checkGitPush, checkSecretArgs, checkWriteCommand, checkNetwork]) {
-    const decision = check(cmd, args, cwd, ctx);
+  const checks = [
+    () => checkGitPush(cmd, args),
+    () => checkSecretArgs(cmd, args, cwd, ctx),
+    () => checkWriteCommand(cmd, args, cwd, ctx),
+    () => checkNetwork(cmd, args, ctx),
+  ];
+  for (const check of checks) {
+    const decision = check();
     if (!decision.allow) return decision;
   }
   return ALLOW;
@@ -263,16 +267,13 @@ function shellScript(cmd: string, args: string[]): string | undefined {
 
 function checkSecretToken(token: string, cwd: string, ctx: GuardContext): Decision {
   if (!token || /\s/.test(token)) return ALLOW;
-  const candidates = token.includes('=') ? [token, token.slice(token.indexOf('=') + 1)] : [token];
-  for (const c of candidates) {
+  for (const c of withValuePart(token)) {
     if (!c || c.includes('$')) continue;
     if (wildcardHitsSecret(c, ctx)) {
       return deny('secret-read', 'This pattern would read secret files.', c);
     }
     const abs = resolvePath(c, cwd, ctx.home);
-    if (isSecretPath(abs, ctx)) {
-      return deny('secret-read', 'Secret and credential files are off limits to agents.', abs);
-    }
+    if (isSecretPath(abs, ctx)) return denySecret(abs);
   }
   return ALLOW;
 }
@@ -327,7 +328,17 @@ function checkGitPush(cmd: string, args: string[]): Decision {
 
 // ---------- writes from shell commands ----------
 
-const WRITE_ALL = new Set(['rm', 'touch', 'mkdir', 'rmdir', 'tee', 'truncate', 'shred', 'unlink']);
+const WRITE_ALL = new Set([
+  'rm',
+  'mv',
+  'touch',
+  'mkdir',
+  'rmdir',
+  'tee',
+  'truncate',
+  'shred',
+  'unlink',
+]);
 const WRITE_AFTER_FIRST = new Set(['chmod', 'chown', 'chgrp']);
 const WRITE_LAST = new Set(['cp', 'install', 'ln', 'rsync']);
 
@@ -335,7 +346,7 @@ const positionals = (args: string[]): string[] => args.filter((a) => !a.startsWi
 
 function checkWriteCommand(cmd: string, args: string[], cwd: string, ctx: GuardContext): Decision {
   let targets: string[] = [];
-  if (WRITE_ALL.has(cmd) || cmd === 'mv') targets = positionals(args);
+  if (WRITE_ALL.has(cmd)) targets = positionals(args);
   else if (WRITE_AFTER_FIRST.has(cmd)) targets = positionals(args).slice(1);
   else if (WRITE_LAST.has(cmd)) targets = positionals(args).slice(-1);
   else if (cmd === 'dd') targets = args.filter((a) => a.startsWith('of=')).map((a) => a.slice(3));
@@ -346,10 +357,9 @@ function checkWriteCommand(cmd: string, args: string[], cwd: string, ctx: GuardC
     const { sub, rest } = gitSubcommand(args);
     if (sub === 'clone') targets = positionals(rest).slice(1, 2);
   }
-  // rsync/scp style remote destinations are handled by the network rule.
-  for (const t of targets.filter(
-    (x) => !/^[A-Za-z0-9._-]+@?[A-Za-z0-9.-]*:/.test(x) || x.includes('/'),
-  )) {
+  // An rsync destination like `host:path` is remote; the network rule checks the host.
+  const local = cmd === 'rsync' ? targets.filter((t) => !SCP_HOST.test(t)) : targets;
+  for (const t of local) {
     const decision = checkWritePath(t, cwd, ctx);
     if (!decision.allow) return decision;
   }
@@ -397,7 +407,7 @@ const GIT_NET_SUBS = new Set([
 function urlHosts(args: string[]): string[] {
   const hosts: string[] = [];
   for (const a of args) {
-    for (const part of a.includes('=') ? [a, a.slice(a.indexOf('=') + 1)] : [a]) {
+    for (const part of withValuePart(a)) {
       const m = URL_HOST.exec(part);
       if (m?.[1]) hosts.push(m[1]);
     }
@@ -439,7 +449,12 @@ function undeterminable(cmd: string): Decision {
   );
 }
 
-function checkNetwork(cmd: string, args: string[], _cwd: string, ctx: GuardContext): Decision {
+/** Allow one host if it is known and listed; deny if the command's host could not be found. */
+function checkHost(cmd: string, host: string | undefined, ctx: GuardContext): Decision {
+  return host ? checkHosts([host], ctx) : undeterminable(cmd);
+}
+
+function checkNetwork(cmd: string, args: string[], ctx: GuardContext): Decision {
   if (HTTP_TOOLS.has(cmd)) {
     const hosts = urlHosts(args);
     return hosts.length === 0 ? undeterminable(cmd) : checkHosts(hosts, ctx);
@@ -447,12 +462,12 @@ function checkNetwork(cmd: string, args: string[], _cwd: string, ctx: GuardConte
   if (RAW_TOOLS.has(cmd)) {
     const tcp = args.map((a) => /^(?:TCP|UDP)[46]?:([^:]+)/i.exec(a)?.[1]).find(Boolean);
     const host = tcp ?? (cmd === 'socat' ? undefined : firstPositional(args, RAW_VALUE_OPTS));
-    return host ? checkHosts([host], ctx) : undeterminable(cmd);
+    return checkHost(cmd, host, ctx);
   }
   if (SSH_TOOLS.has(cmd)) {
     const target = firstPositional(args, SSH_VALUE_OPTS);
     const host = target?.replace(/^[^@]*@/, '').replace(/:.*$/, '');
-    return host ? checkHosts([host], ctx) : undeterminable(cmd);
+    return checkHost(cmd, host, ctx);
   }
   if (cmd === 'scp' || cmd === 'rsync') {
     const hosts = [

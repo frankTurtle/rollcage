@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,7 +7,8 @@ import type { AuditRecord } from '@adl/shared';
 import { describe, expect, it } from 'vitest';
 import { runCli } from '../src/cli.ts';
 import { checkRepo } from '../src/check.ts';
-import { AUDIT_ACTOR } from '../src/hook.ts';
+import { loadPolicyConfig } from '../src/config.ts';
+import { AUDIT_ACTOR } from '../src/audit-schema.ts';
 import { computeMetrics, formatMetrics, isoWeek } from '../src/metrics.ts';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -78,14 +79,11 @@ describe('AC-9 checkRepo', () => {
     ]);
   });
 
-  it('honors a custom policy path and hook marker', () => {
+  it('honors a custom policy path', () => {
     const root = repo(goodSettings(), null);
     mkdirSync(join(root, 'docs'));
     writeFileSync(join(root, 'docs', 'ai.md'), '# AI\n');
     expect(checkRepo(root, { policyPath: 'docs/ai.md' })).toEqual([]);
-    expect(checkRepo(root, { policyPath: 'docs/ai.md', hookMarker: 'custom-guard' }).length).toBe(
-      2,
-    );
     rmSync(root, { recursive: true });
   });
 
@@ -157,5 +155,30 @@ describe('AC-10 metrics', () => {
     const text = formatMetrics('x', m);
     expect(text).toContain('n/a');
     expect(text).toContain('none');
+  });
+});
+
+describe('templates stay in sync', () => {
+  const read = (path: string) =>
+    JSON.parse(readFileSync(join(REPO_ROOT, path), 'utf8')) as {
+      hooks: Record<string, { hooks: { command: string }[] }[]>;
+    };
+  const normalize = (settings: ReturnType<typeof read>) =>
+    JSON.parse(
+      JSON.stringify(settings, (key, value: unknown) => (key === 'command' ? 'HOOK' : value)),
+    ) as unknown;
+
+  it('the repo settings equal the template apart from the hook command', () => {
+    expect(normalize(read('.claude/settings.json'))).toEqual(
+      normalize(read('pieces/02-agent-policy/templates/settings.json')),
+    );
+  });
+
+  it('the template config lists exactly the default hosts', () => {
+    const template = readFileSync(
+      join(REPO_ROOT, 'pieces/02-agent-policy/templates/agent-policy.yml'),
+      'utf8',
+    );
+    expect(loadPolicyConfig(template).allowed_hosts).toEqual(loadPolicyConfig().allowed_hosts);
   });
 });

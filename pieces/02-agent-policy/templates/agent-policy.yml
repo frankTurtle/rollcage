@@ -5,10 +5,12 @@ allowed_hosts:
   - github.com
   - api.github.com
   - raw.githubusercontent.com
+  - docs.github.com
   - registry.npmjs.org
   - pypi.org
   - files.pythonhosted.org
   - code.claude.com
+  - docs.claude.com
   - platform.claude.com
   - api.anthropic.com
   # - your-internal-docs.example.com

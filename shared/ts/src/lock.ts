@@ -28,7 +28,7 @@ export function withLock<T>(
         continue;
       }
       if (Date.now() - start > timeoutMs) throw new Error('timed out waiting for the audit lock');
-      sleep(15);
+      sleep(5);
     }
   }
   try {

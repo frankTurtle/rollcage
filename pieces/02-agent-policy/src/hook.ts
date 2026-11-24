@@ -5,21 +5,17 @@ import { z } from 'zod';
 import { loadPolicyConfig } from './config.js';
 import type { PolicyConfig } from './config.js';
 import { deny, evaluate } from './guard.js';
-import type { Decision } from './guard.js';
-import { withLock } from './lock.js';
+import type { Decision, Rule } from './guard.js';
+import { AUDIT_ACTOR } from './audit-schema.js';
 
-export const AUDIT_ACTOR = 'agent-policy';
-
-const HookInput = z
-  .object({
-    tool_name: z.string().min(1),
-    tool_input: z.record(z.unknown()).default({}),
-    cwd: z.string().optional(),
-    session_id: z.string().optional(),
-    tool_use_id: z.string().optional(),
-    hook_event_name: z.string().optional(),
-  })
-  .passthrough();
+const HookInput = z.object({
+  tool_name: z.string().min(1),
+  tool_input: z.record(z.unknown()).default({}),
+  cwd: z.string().optional(),
+  session_id: z.string().optional(),
+  tool_use_id: z.string().optional(),
+  hook_event_name: z.string().optional(),
+});
 
 export interface HookDeps {
   env: Record<string, string | undefined>;
@@ -38,20 +34,12 @@ function blockMessage(d: Decision): string {
   return `Blocked by agent policy [${d.rule}]: ${d.reason}${target} See policy/AI_CODING_AGENT_POLICY.md.`;
 }
 
-function appendAudit(
-  auditPath: string,
-  entry: Parameters<AuditLogger['append']>[0],
-  now: (() => Date) | undefined,
-): void {
-  withLock(`${auditPath}.lock`, () => new AuditLogger(auditPath, now).append(entry));
-}
-
 /**
  * Handle one hook invocation. `pre` decides and logs; `post` logs the outcome.
  * Every failure in `pre` ends in exit code 2, because exit code 1 would let the call proceed.
  */
 export function runHook(kind: 'pre' | 'post', stdin: string, deps: HookDeps): HookResult {
-  const failure = (rule: Parameters<typeof deny>[0], reason: string): HookResult =>
+  const failure = (rule: Rule, reason: string): HookResult =>
     kind === 'pre'
       ? { exitCode: 2, stderr: blockMessage(deny(rule, reason)) }
       : { exitCode: 1, stderr: `agent-policy post hook: ${reason}` };
@@ -72,21 +60,17 @@ export function runHook(kind: 'pre' | 'post', stdin: string, deps: HookDeps): Ho
     tool: parsed.tool_name,
   };
   const input = { tool_name: parsed.tool_name, tool_input: parsed.tool_input };
+  const append = (entry: Omit<Parameters<AuditLogger['append']>[0], 'actor' | 'input'>) =>
+    new AuditLogger(auditPath, deps.now).append({ actor: AUDIT_ACTOR, input, ...entry });
 
   if (kind === 'post') {
     try {
       const failed = parsed.hook_event_name === 'PostToolUseFailure';
-      appendAudit(
-        auditPath,
-        {
-          actor: AUDIT_ACTOR,
-          action: 'post-tool-use',
-          input,
-          decision: failed ? 'failed' : 'executed',
-          detail: detailBase,
-        },
-        deps.now,
-      );
+      append({
+        action: 'post-tool-use',
+        decision: failed ? 'failed' : 'executed',
+        detail: detailBase,
+      });
       return { exitCode: 0, stderr: '' };
     } catch (error) {
       return failure('audit-unavailable', `could not write the audit log (${String(error)})`);
@@ -106,21 +90,15 @@ export function runHook(kind: 'pre' | 'post', stdin: string, deps: HookDeps): Ho
     { projectDir, home: deps.home, config },
   );
   try {
-    appendAudit(
-      auditPath,
-      {
-        actor: AUDIT_ACTOR,
-        action: 'pre-tool-use',
-        input,
-        decision: decision.allow ? 'allow' : 'deny',
-        detail: {
-          ...detailBase,
-          ...(decision.rule ? { rule: decision.rule } : {}),
-          ...(decision.target ? { target: decision.target } : {}),
-        },
+    append({
+      action: 'pre-tool-use',
+      decision: decision.allow ? 'allow' : 'deny',
+      detail: {
+        ...detailBase,
+        ...(decision.rule ? { rule: decision.rule } : {}),
+        ...(decision.target ? { target: decision.target } : {}),
       },
-      deps.now,
-    );
+    });
   } catch {
     if (config.audit_required && decision.allow) {
       decision = deny(

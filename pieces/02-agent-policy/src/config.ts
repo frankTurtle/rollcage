@@ -61,6 +61,5 @@ export type PolicyConfig = z.infer<typeof ConfigSchema>;
 
 /** Parse agent-policy.yml text. Empty text gives the defaults; unknown keys are errors. */
 export function loadPolicyConfig(yamlText?: string): PolicyConfig {
-  const raw: unknown = yamlText?.trim() ? parse(yamlText) : {};
-  return ConfigSchema.parse(raw ?? {});
+  return ConfigSchema.parse(parse(yamlText ?? '') ?? {});
 }

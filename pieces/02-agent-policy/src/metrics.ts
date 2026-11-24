@@ -1,5 +1,5 @@
 import type { AuditRecord } from '@adl/shared';
-import { AUDIT_ACTOR } from './hook.js';
+import { AUDIT_ACTOR } from './audit-schema.js';
 
 export interface PolicyMetrics {
   totalBlocked: number;

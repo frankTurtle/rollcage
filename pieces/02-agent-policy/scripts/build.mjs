@@ -5,6 +5,7 @@ await build({
   entryPoints: ['src/bin.ts'],
   outfile: 'dist/agent-policy-hook.mjs',
   bundle: true,
+  minify: true,
   platform: 'node',
   format: 'esm',
   target: 'node24',
