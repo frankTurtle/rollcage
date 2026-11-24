@@ -12,9 +12,7 @@ describe('AC-1 the five metrics on hand-built data', () => {
   it('deployment frequency counts successful deployments only', () => {
     expect(m.deploymentFrequency).toEqual({
       n: 3,
-      insufficient: false,
       perWeek: 1.5,
-      medianDaysBetween: 4, // gaps of 2 and 6 days
     });
   });
 
@@ -64,10 +62,10 @@ describe('AC-1 the five metrics on hand-built data', () => {
 describe('edge cases', () => {
   it('no data gives insufficient metrics, not zeros', () => {
     const m = computeMetrics(empty(), period, cfg());
-    expect(m.deploymentFrequency).toMatchObject({ n: 0, insufficient: true, perWeek: null });
-    expect(m.changeLeadTime).toMatchObject({ n: 0, insufficient: true, medianHours: null });
-    expect(m.changeFailRate).toMatchObject({ insufficient: true, rate: null });
-    expect(m.failedDeploymentRecovery.insufficient).toBe(true);
+    expect(m.deploymentFrequency).toMatchObject({ n: 0, perWeek: null });
+    expect(m.changeLeadTime).toMatchObject({ n: 0, medianHours: null });
+    expect(m.changeFailRate).toMatchObject({ rate: null });
+    expect(m.failedDeploymentRecovery.medianHours).toBeNull();
     expect(m.deploymentReworkRate.rate).toBeNull();
   });
 
@@ -77,7 +75,7 @@ describe('edge cases', () => {
       period,
       cfg(),
     );
-    expect(m.deploymentFrequency).toMatchObject({ n: 1, perWeek: 0.5, medianDaysBetween: null });
+    expect(m.deploymentFrequency).toMatchObject({ n: 1, perWeek: 0.5 });
   });
 
   it('a deployment exactly at since counts; one exactly at until does not', () => {
@@ -195,10 +193,9 @@ describe('AC-3 rework differs from change fail rate', () => {
 describe('AC-4 minimum samples', () => {
   it('shows insufficient data when there are fewer samples than min_samples', () => {
     const m = computeMetrics(sample(), period, loadDoraConfig());
-    expect(m.deploymentFrequency).toMatchObject({ n: 3, insufficient: true, perWeek: null });
+    expect(m.deploymentFrequency).toMatchObject({ n: 3, perWeek: null });
     expect(m.changeLeadTime).toMatchObject({
       n: 3,
-      insufficient: true,
       medianHours: null,
       p90Hours: null,
     });

@@ -3,26 +3,23 @@ import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runCli } from '../src/cli.ts';
-import { parseDate } from '../src/cli.ts';
+import { parseDate } from '../src/dates.ts';
+import { generateSynthetic } from '../src/synthetic.ts';
 
-const here = dirname(fileURLToPath(import.meta.url));
-const out = join(here, 'out');
+const SEED = 8;
+const SINCE = '2025-10-06';
+const UNTIL = '2026-07-06';
+const ROLLOUT = '2026-04-06';
+
+const out = join(dirname(fileURLToPath(import.meta.url)), 'out');
 const tty = process.stdout.isTTY;
 const bold = (t: string) => (tty ? `\u001b[1m${t}\u001b[0m` : t);
 const header = (t: string) => console.log(`\n${bold(`== ${t} ==`)}`);
 
 const ARGS = [
   'report',
-  '--source',
-  'synthetic',
-  '--seed',
-  '8',
-  '--since',
-  '2025-10-06',
-  '--until',
-  '2026-07-06',
-  '--compare-at',
-  '2026-04-06',
+  ...['--source', 'synthetic', '--seed', String(SEED)],
+  ...['--since', SINCE, '--until', UNTIL, '--compare-at', ROLLOUT],
 ];
 
 async function report(extra: string[]): Promise<void> {
@@ -34,33 +31,24 @@ async function report(extra: string[]): Promise<void> {
   if (code !== 0) process.exitCode = code;
 }
 
-async function before(): Promise<void> {
+function before(): void {
   header('BEFORE: no measurement');
-  const data = JSON.parse(await readData());
-  console.log(`Merged pull requests in the period: ${data.changes.length}`);
+  const { changes } = generateSynthetic({
+    seed: SEED,
+    range: { since: parseDate(SINCE, 'since'), until: parseDate(UNTIL, 'until') },
+    rolloutAt: parseDate(ROLLOUT, 'rollout'),
+  });
+  console.log(`Merged pull requests in the period: ${changes.length}`);
   console.log('That number goes up after a rollout. It says nothing about delivery.');
 }
 
-async function readData(): Promise<string> {
-  const { generateSynthetic } = await import('../src/synthetic.ts');
-  return JSON.stringify(
-    generateSynthetic({
-      seed: 8,
-      range: {
-        since: parseDate('2025-10-06', '--since'),
-        until: parseDate('2026-07-06', '--until'),
-      },
-      rolloutAt: parseDate('2026-04-06', 'rollout'),
-    }),
-  );
-}
-
 async function run(): Promise<void> {
-  header('RUN: the five DORA metrics, before and after 2026-04-06 (SYNTHETIC data)');
+  header(`RUN: the five DORA metrics, before and after ${ROLLOUT} (SYNTHETIC data)`);
   await report(['--out', out]);
 }
 
-function after(): void {
+async function after(): Promise<void> {
+  if (!existsSync(join(out, 'summary.md'))) await run();
   header('AFTER: the CFO summary');
   console.log(readFileSync(join(out, 'summary.md'), 'utf8'));
   console.log(
@@ -73,16 +61,18 @@ async function metric(): Promise<void> {
   await report([]);
 }
 
-const stages = { before, run, after, metric };
-const requested = process.argv[2] ?? 'all';
-if (requested === 'all' || requested === 'run') rmSync(out, { recursive: true, force: true });
-for (const name of requested === 'all' ? Object.keys(stages) : [requested]) {
-  const stage = stages[name as keyof typeof stages];
-  if (!stage) {
-    console.error(`unknown stage: ${name}`);
-    process.exitCode = 2;
-    break;
-  }
-  if (name === 'after' && !existsSync(join(out, 'summary.md'))) await run();
-  await stage();
+const stage = process.argv[2] ?? 'all';
+if (stage === 'all' || stage === 'run') rmSync(out, { recursive: true, force: true });
+if (stage === 'all') {
+  before();
+  await run();
+  await after();
+  await metric();
+} else if (stage === 'before') before();
+else if (stage === 'run') await run();
+else if (stage === 'after') await after();
+else if (stage === 'metric') await metric();
+else {
+  console.error(`unknown stage: ${stage}`);
+  process.exitCode = 2;
 }

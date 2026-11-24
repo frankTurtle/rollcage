@@ -1,3 +1,4 @@
+import { isoDay } from './dates.js';
 import { changeText, num, periodLabel, VERDICT_WORD } from './format.js';
 import type { Report, Row } from './schema.js';
 
@@ -27,7 +28,7 @@ export function renderHtml(report: Report): string {
     );
   }
   body.push(
-    `<p>${esc(report.repo ?? 'Example data')} <small>as of ${esc(report.asOf.slice(0, 10))}, source: ${esc(report.source)}</small></p>`,
+    `<p>${esc(report.repo ?? 'Example data')} <small>as of ${esc(isoDay(report.asOf))}, source: ${esc(report.source)}</small></p>`,
   );
   if (report.comparison) {
     body.push(

@@ -1,3 +1,4 @@
+import { isoDay } from './dates.js';
 import type { Report, Row } from './schema.js';
 
 /** "12.3", or "n/a" when the value is missing. */
@@ -22,6 +23,5 @@ export function changeText(row: Row): string {
 export function periodLabel(report: Report, name: 'all' | 'before' | 'after'): string {
   const p = report.periods.find((x) => x.name === name);
   if (!p) return name;
-  const day = (iso: string) => iso.slice(0, 10);
-  return `${day(p.metrics.period.since)} to ${day(p.metrics.period.until)}`;
+  return `${isoDay(p.metrics.period.since)} to ${isoDay(p.metrics.period.until)}`;
 }

@@ -1,18 +1,19 @@
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
+import type { FetchLike } from '@adl/shared';
 import { loadDoraConfig } from './config.js';
+import type { DoraConfig } from './config.js';
+import { DAY_MS, isoDay, parseDate } from './dates.js';
 import { GitHubSource } from './github-source.js';
-import type { FetchLike } from './github-source.js';
 import { renderHtml } from './render-html.js';
 import { renderSummary } from './render-summary.js';
 import { renderText } from './render-text.js';
 import { buildReport } from './report.js';
 import { ReportSchema } from './schema.js';
-import { DAY_MS } from './stats.js';
 import { generateSynthetic } from './synthetic.js';
 import { DoraDataSchema } from './types.js';
-import type { DoraData, Range, Source } from './types.js';
+import type { LoadResult, Range } from './types.js';
 
 export interface CliDeps {
   env: Record<string, string | undefined>;
@@ -22,19 +23,46 @@ export interface CliDeps {
   fetchImpl?: FetchLike;
 }
 
+/** How far back a report looks when --since is not given. */
+const DEFAULT_RANGE_DAYS = 90;
+
 const USAGE = `Usage:
   dora report [--repo OWNER/NAME | --data FILE | --source synthetic] [--config FILE]
               [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--compare-at YYYY-MM-DD]
               [--seed N] [--out DIR]
-Dates are UTC. The range is [since, until). Default: the 90 days before today.`;
+Dates are UTC. The range is [since, until). Default: the ${DEFAULT_RANGE_DAYS} days before today.`;
 
-export function parseDate(value: string, flag: string): Date {
-  const date = new Date(`${value}T00:00:00.000Z`);
-  // The round trip rejects impossible dates such as 2026-02-30, which Date would roll forward.
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || date.toISOString().slice(0, 10) !== value) {
-    throw new Error(`${flag} must be a date like 2026-03-15`);
+interface DataFlags {
+  data?: string | undefined;
+  source?: string | undefined;
+  repo?: string | undefined;
+  seed?: string | undefined;
+}
+
+/** Pick the data source from the flags: a data file, the synthetic generator, or GitHub. */
+async function loadData(
+  values: DataFlags,
+  config: DoraConfig,
+  range: Range,
+  compareAt: Date | undefined,
+  deps: CliDeps,
+): Promise<{ result: LoadResult; sourceName: string; synthetic: boolean }> {
+  if (values.data) {
+    const data = DoraDataSchema.parse(JSON.parse(readFileSync(values.data, 'utf8')));
+    return { result: { data, warnings: [] }, sourceName: 'file', synthetic: false };
   }
-  return date;
+  if (values.source === 'synthetic') {
+    if (!compareAt)
+      throw new Error('--source synthetic needs --compare-at (the made-up rollout date)');
+    const data = generateSynthetic({ seed: Number(values.seed), range, rolloutAt: compareAt });
+    return { result: { data, warnings: [] }, sourceName: 'synthetic', synthetic: true };
+  }
+  const [owner, name] = (values.repo ?? '').split('/');
+  const token = deps.env['GITHUB_TOKEN'];
+  if (!owner || !name) throw new Error('give --repo OWNER/NAME, --data FILE or --source synthetic');
+  if (!token) throw new Error('GITHUB_TOKEN is not set');
+  const source = new GitHubSource({ owner, name }, token, config, deps.fetchImpl);
+  return { result: await source.load(range), sourceName: source.name, synthetic: false };
 }
 
 export async function runCli(argv: string[], deps: CliDeps): Promise<number> {
@@ -60,57 +88,38 @@ export async function runCli(argv: string[], deps: CliDeps): Promise<number> {
     });
 
     const configPath = values.config ?? 'dora.yml';
-    if (values.config && !existsSync(configPath))
-      throw new Error(`config file not found: ${configPath}`);
-    const config = loadDoraConfig(
-      existsSync(configPath) ? readFileSync(configPath, 'utf8') : undefined,
-    );
+    const hasConfig = existsSync(configPath);
+    if (values.config && !hasConfig) throw new Error(`config file not found: ${configPath}`);
+    const config = loadDoraConfig(hasConfig ? readFileSync(configPath, 'utf8') : undefined);
 
-    const today = (deps.now?.() ?? new Date()).toISOString().slice(0, 10);
+    const today = isoDay(deps.now?.() ?? new Date());
     const until = parseDate(values.until ?? today, '--until');
     const since = values.since
       ? parseDate(values.since, '--since')
-      : new Date(until.getTime() - 90 * DAY_MS);
+      : new Date(until.getTime() - DEFAULT_RANGE_DAYS * DAY_MS);
     if (since >= until) throw new Error('--since must be before --until');
     const range: Range = { since, until };
     const compareAt = values['compare-at']
       ? parseDate(values['compare-at'], '--compare-at')
       : undefined;
 
-    let data: DoraData;
-    let source: Source | undefined;
-    let sourceName: string;
-    let synthetic = false;
-    if (values.data) {
-      data = DoraDataSchema.parse(JSON.parse(readFileSync(values.data, 'utf8')));
-      sourceName = 'file';
-    } else if (values.source === 'synthetic') {
-      if (!compareAt)
-        throw new Error('--source synthetic needs --compare-at (the made-up rollout date)');
-      data = generateSynthetic({ seed: Number(values.seed), range, rolloutAt: compareAt });
-      sourceName = 'synthetic';
-      synthetic = true;
-    } else {
-      const [owner, name] = (values.repo ?? '').split('/');
-      const token = deps.env['GITHUB_TOKEN'];
-      if (!owner || !name)
-        throw new Error('give --repo OWNER/NAME, --data FILE or --source synthetic');
-      if (!token) throw new Error('GITHUB_TOKEN is not set');
-      source = new GitHubSource({ owner, name }, token, config, deps.fetchImpl);
-      data = await source.load(range);
-      sourceName = source.name;
-    }
-
+    const { result, sourceName, synthetic } = await loadData(
+      values,
+      config,
+      range,
+      compareAt,
+      deps,
+    );
     const report = ReportSchema.parse(
       buildReport({
-        data,
+        data: result.data,
         config,
         range,
         compareAt,
         source: sourceName,
         repo: values.repo,
         synthetic,
-        warnings: source?.warnings,
+        warnings: result.warnings,
       }),
     );
     deps.out(renderText(report));

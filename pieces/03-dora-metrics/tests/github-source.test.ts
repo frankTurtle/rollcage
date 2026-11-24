@@ -1,3 +1,4 @@
+import { GITHUB_API_VERSION } from '@adl/shared';
 import { describe, expect, it } from 'vitest';
 import { loadDoraConfig } from '../src/config.ts';
 import { GitHubSource, RequestBudgetError } from '../src/github-source.ts';
@@ -53,13 +54,13 @@ describe('AC-6 deployments from the Deployments API', () => {
   it('builds deployments: success time is the success status, failures are kept, unknown are skipped', async () => {
     const full = { ...routes, [R('/pulls')]: () => [], [R('/issues')]: () => [] };
     const { gh } = source('', full);
-    const data = await gh.load(span);
+    const { data, warnings } = await gh.load(span);
     const byId = Object.fromEntries(data.deployments.map((d) => [d.id, d]));
     expect(byId['1']).toMatchObject({ status: 'success', at: '2026-01-05T10:06:00Z', sha: 'sha1' });
     expect(byId['2']).toMatchObject({ status: 'failure', at: '2026-01-10T10:09:00Z' });
     expect(byId['4']).toMatchObject({ status: 'failure' });
     expect(byId['3']).toBeUndefined();
-    expect(gh.warnings.join(' ')).toContain('1 deployment(s) had no success or failure status');
+    expect(warnings.join(' ')).toContain('1 deployment(s) had no success or failure status');
   });
 
   it('sends the environment, auth and API version headers, and only GETs', async () => {
@@ -70,9 +71,8 @@ describe('AC-6 deployments from the Deployments API', () => {
     expect(list?.query.get('environment')).toBe('staging');
     expect(list?.query.get('per_page')).toBe('100');
     expect(list?.headers.get('authorization')).toBe('Bearer test-token-not-real');
-    expect(list?.headers.get('x-github-api-version')).toBe('2026-03-10');
+    expect(list?.headers.get('x-github-api-version')).toBe(GITHUB_API_VERSION);
     expect(calls.every((c) => c.method === 'GET')).toBe(true);
-    expect(gh.requestCount).toBe(calls.length);
   });
 });
 
@@ -83,7 +83,9 @@ describe('AC-6 deployments from releases and workflow runs', () => {
       [R('/pulls')]: () => [],
       [R('/issues')]: () => [],
     });
-    const { deployments } = await gh.load(span);
+    const {
+      data: { deployments },
+    } = await gh.load(span);
     expect(deployments).toEqual([
       { id: 'v2', sha: 'abc', at: '2026-01-14T10:00:00Z', status: 'success' },
     ]);
@@ -98,7 +100,9 @@ describe('AC-6 deployments from releases and workflow runs', () => {
         [R('/issues')]: () => [],
       },
     );
-    const { deployments } = await gh.load(span);
+    const {
+      data: { deployments },
+    } = await gh.load(span);
     expect(deployments.map((d) => [d.id, d.status])).toEqual([
       ['501', 'success'],
       ['502', 'failure'],
@@ -122,14 +126,14 @@ describe('AC-6 deployments from releases and workflow runs', () => {
       [R('/pulls')]: () => [],
       [R('/issues')]: () => [],
     });
-    await gh.load(span);
-    expect(gh.warnings.join(' ')).toContain('1,000 result limit');
+    const { warnings } = await gh.load(span);
+    expect(warnings.join(' ')).toContain('1,000 result limit');
   });
 });
 
 describe('AC-6 changes and incidents', () => {
   const routes: Record<string, Handler> = {
-    [R('/releases')]: () => [],
+    [R('/releases')]: () => fixture('releases.json'),
     [R('/pulls')]: () => fixture('pulls.json'),
     [R('/pulls/10/commits')]: () => fixture('pull-commits-10.json'),
     [R('/pulls/12/commits')]: () => fixture('pull-commits-12.json'),
@@ -139,7 +143,9 @@ describe('AC-6 changes and incidents', () => {
 
   it('keeps merged pull requests in range and takes the earliest commit date, whatever the order', async () => {
     const { gh } = load();
-    const { changes } = await gh.load(span);
+    const {
+      data: { changes },
+    } = await gh.load(span);
     expect(changes).toEqual([
       {
         id: 12,
@@ -158,18 +164,38 @@ describe('AC-6 changes and incidents', () => {
     ]);
   });
 
+  it('does not fetch commits for a PR merged after the last deployment, but still lists it', async () => {
+    const { gh, calls } = source('deployments:\n  source: releases\n', routes);
+    const { data } = await gh.load(span);
+    // The only release is 2026-01-14, after both merges, so commits are fetched for both PRs.
+    expect(calls.filter((c) => c.path.endsWith('/commits'))).toHaveLength(2);
+    const none = source('deployments:\n  source: releases\n', {
+      ...routes,
+      [R('/releases')]: () => [],
+    });
+    const result = await none.gh.load(span);
+    expect(none.calls.some((c) => c.path.endsWith('/commits'))).toBe(false);
+    expect(result.data.changes.map((c) => c.id)).toEqual([12, 10]);
+    expect(result.data.changes.every((c) => c.firstCommitAt === c.mergedAt)).toBe(true);
+    expect(data.changes).toHaveLength(2);
+  });
+
   it('falls back to the merge time when a PR has no commit dates', async () => {
     const { gh } = source('deployments:\n  source: releases\n', {
       ...routes,
       [R('/pulls/10/commits')]: () => [],
     });
-    const { changes } = await gh.load(span);
+    const {
+      data: { changes },
+    } = await gh.load(span);
     expect(changes.find((c) => c.id === 10)?.firstCommitAt).toBe('2026-01-04T16:00:00Z');
   });
 
   it('filters pull requests out of the issue list and respects the range', async () => {
     const { gh, calls } = load();
-    const { incidents } = await gh.load(span);
+    const {
+      data: { incidents },
+    } = await gh.load(span);
     expect(incidents).toEqual([
       { id: 30, openedAt: '2026-01-10T11:00:00Z', closedAt: '2026-01-10T15:00:00Z' },
       { id: 31, openedAt: '2026-01-12T11:00:00Z', closedAt: null },
@@ -193,9 +219,41 @@ describe('AC-6 changes and incidents', () => {
           ? Array.from({ length: 100 }, (_, i) => issue(i))
           : [issue(500), issue(501)],
     });
-    const { incidents } = await gh.load(span);
+    const {
+      data: { incidents },
+    } = await gh.load(span);
     expect(incidents).toHaveLength(102);
     expect(calls.filter((c) => c.path === R('/issues'))).toHaveLength(2);
+  });
+});
+
+describe('AC-6 concurrency', () => {
+  it('never has more than five status requests in flight', async () => {
+    const many = Array.from({ length: 12 }, (_, i) => ({
+      id: i + 1,
+      sha: `s${i}`,
+      created_at: '2026-01-05T10:00:00Z',
+    }));
+    let inFlight = 0;
+    let peak = 0;
+    const fetchImpl = async (url: string) => {
+      const path = new URL(url).pathname;
+      if (!path.endsWith('/statuses')) {
+        return new Response(JSON.stringify(path.endsWith('/deployments') ? many : []));
+      }
+      inFlight++;
+      peak = Math.max(peak, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      inFlight--;
+      return new Response(
+        JSON.stringify([{ state: 'success', created_at: '2026-01-05T10:05:00Z' }]),
+      );
+    };
+    const gh = new GitHubSource({ owner: 'o', name: 'r' }, 't', loadDoraConfig(''), fetchImpl);
+    const { data } = await gh.load(span);
+    expect(data.deployments).toHaveLength(12);
+    expect(peak).toBeLessThanOrEqual(5);
+    expect(peak).toBeGreaterThan(1);
   });
 });
 

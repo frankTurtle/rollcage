@@ -1,3 +1,4 @@
+import { METRIC_ROWS } from './compare.js';
 import { changeText, num, periodLabel, VERDICT_WORD } from './format.js';
 import type { Report } from './schema.js';
 
@@ -12,22 +13,10 @@ export function renderText(report: Report): string {
     const m = report.periods[0]?.metrics;
     if (!m) return lines.join('\n');
     lines.push(`Period: ${periodLabel(report, 'all')}`, '');
-    const rows: [string, string, number][] = [
-      [
-        'Deployment frequency (per week)',
-        num(m.deploymentFrequency.perWeek),
-        m.deploymentFrequency.n,
-      ],
-      ['Change lead time, median (hours)', num(m.changeLeadTime.medianHours), m.changeLeadTime.n],
-      ['Change fail rate (%)', num(m.changeFailRate.rate), m.changeFailRate.n],
-      [
-        'Failed deployment recovery, median (hours)',
-        num(m.failedDeploymentRecovery.medianHours),
-        m.failedDeploymentRecovery.n,
-      ],
-      ['Deployment rework rate (%)', num(m.deploymentReworkRate.rate), m.deploymentReworkRate.n],
-    ];
-    for (const [label, value, n] of rows) lines.push(`${pad(label, 52)}${pad(value, 10)}n=${n}`);
+    for (const row of METRIC_ROWS) {
+      const { value, n } = row.pick(m);
+      lines.push(`${pad(`${row.label} (${row.unit})`, 52)}${pad(num(value), 10)}n=${n}`);
+    }
     return lines.join('\n');
   }
   lines.push(

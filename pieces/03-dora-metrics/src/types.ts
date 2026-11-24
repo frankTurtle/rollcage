@@ -42,9 +42,14 @@ export interface Range {
   until: Date;
 }
 
+export interface LoadResult {
+  data: DoraData;
+  /** Notes about data that was skipped or incomplete. */
+  warnings: string[];
+}
+
+/** Where the data comes from. GitHub is the only implementation; a GitLab adapter would add one. */
 export interface Source {
   readonly name: string;
-  /** Notes about data that was skipped or incomplete, filled in by `load`. */
-  readonly warnings?: readonly string[];
-  load(range: Range): Promise<DoraData>;
+  load(range: Range): Promise<LoadResult>;
 }

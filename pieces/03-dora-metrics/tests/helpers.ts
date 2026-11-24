@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadDoraConfig } from '../src/config.ts';
@@ -54,3 +55,6 @@ export const sample = (): DoraData => ({
   ],
   incidents: [{ id: 9, openedAt: '2026-01-04T14:00:00Z', closedAt: '2026-01-04T20:00:00Z' }],
 });
+
+/** A fresh temporary directory. */
+export const tmp = (): string => mkdtempSync(join(tmpdir(), 'dora-'));

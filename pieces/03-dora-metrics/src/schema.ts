@@ -6,33 +6,27 @@ export const MetricsSchema = z.object({
   period: z.object({ since: z.string(), until: z.string(), days: z.number() }),
   deploymentFrequency: z.object({
     n: z.number(),
-    insufficient: z.boolean(),
     perWeek: nullableNumber,
-    medianDaysBetween: nullableNumber,
   }),
   changeLeadTime: z.object({
     n: z.number(),
-    insufficient: z.boolean(),
     undeployed: z.number(),
     medianHours: nullableNumber,
     p90Hours: nullableNumber,
   }),
   changeFailRate: z.object({
     n: z.number(),
-    insufficient: z.boolean(),
     count: z.number(),
     rate: nullableNumber,
   }),
   failedDeploymentRecovery: z.object({
     n: z.number(),
-    insufficient: z.boolean(),
     source: z.enum(['incidents', 'next-deploy']),
     medianHours: nullableNumber,
     p90Hours: nullableNumber,
   }),
   deploymentReworkRate: z.object({
     n: z.number(),
-    insufficient: z.boolean(),
     count: z.number(),
     rate: nullableNumber,
   }),
@@ -76,4 +70,3 @@ export const ReportSchema = z.object({
 export type Metrics = z.infer<typeof MetricsSchema>;
 export type Row = z.infer<typeof RowSchema>;
 export type Report = z.infer<typeof ReportSchema>;
-export type Verdict = Row['verdict'];

@@ -6,7 +6,7 @@ import { buildReport } from '../src/report.ts';
 import { ReportSchema } from '../src/schema.ts';
 import type { Metrics } from '../src/schema.ts';
 import { generateSynthetic } from '../src/synthetic.ts';
-import { cfg, day, empty, range, sample } from './helpers.ts';
+import { cfg, day, range, sample } from './helpers.ts';
 
 /** A Metrics object with only the headline values set. */
 function metrics(
@@ -16,23 +16,21 @@ function metrics(
   const val = (x: number | null | undefined) => (x === undefined ? null : x);
   return {
     period: { since: 's', until: 'u', days: 7 },
-    deploymentFrequency: { n, insufficient: false, perWeek: val(v.freq), medianDaysBetween: null },
+    deploymentFrequency: { n, perWeek: val(v.freq) },
     changeLeadTime: {
       n,
-      insufficient: false,
       undeployed: 0,
       medianHours: val(v.lead),
       p90Hours: null,
     },
-    changeFailRate: { n, insufficient: false, count: 0, rate: val(v.cfr) },
+    changeFailRate: { n, count: 0, rate: val(v.cfr) },
     failedDeploymentRecovery: {
       n,
-      insufficient: false,
       source: 'incidents',
       medianHours: val(v.rec),
       p90Hours: null,
     },
-    deploymentReworkRate: { n, insufficient: false, count: 0, rate: val(v.rework) },
+    deploymentReworkRate: { n, count: 0, rate: val(v.rework) },
   };
 }
 
@@ -177,7 +175,7 @@ describe('synthetic history', () => {
     expect(after.changeFailRate.rate as number).toBeGreaterThan(
       before.changeFailRate.rate as number,
     );
-    expect(before.failedDeploymentRecovery.insufficient).toBe(false);
+    expect(before.failedDeploymentRecovery.medianHours).not.toBeNull();
     expect(before.changeFailRate.count).not.toBe(before.deploymentReworkRate.count);
   });
 
@@ -188,6 +186,5 @@ describe('synthetic history', () => {
       rolloutAt: day('2026-01-01'),
     });
     expect(d.deployments.length).toBeLessThanOrEqual(1);
-    expect(empty().deployments).toEqual([]);
   });
 });

@@ -1,3 +1,4 @@
+import { isoDay } from './dates.js';
 import { changeText, periodLabel, VERDICT_WORD, withUnit } from './format.js';
 import type { Report, Row } from './schema.js';
 
@@ -24,7 +25,7 @@ export function renderSummary(report: Report): string {
     lines.push('Run with a rollout date to compare before and after.', '');
   } else {
     lines.push(
-      `Delivery metrics for ${where}, split at ${report.compareAt?.slice(0, 10)}.`,
+      `Delivery metrics for ${where}, split at ${isoDay(report.compareAt ?? '')}.`,
       `Before: ${periodLabel(report, 'before')}. After: ${periodLabel(report, 'after')}.`,
       '',
       '## The five numbers',

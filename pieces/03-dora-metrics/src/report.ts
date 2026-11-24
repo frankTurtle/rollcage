@@ -1,6 +1,6 @@
 import { compareMetrics } from './compare.js';
 import type { DoraConfig } from './config.js';
-import { computeMetrics } from './metrics.js';
+import { computeMetrics, prepare } from './metrics.js';
 import type { Report } from './schema.js';
 import type { DoraData, Range } from './types.js';
 
@@ -25,6 +25,7 @@ export interface ReportInput {
 /** Compute the metrics for the whole range, or for the periods either side of `compareAt`. */
 export function buildReport(input: ReportInput): Report {
   const { data, config, range, compareAt } = input;
+  const prepared = prepare(data, config);
   let periods: Report['periods'];
   if (compareAt) {
     if (compareAt <= range.since || compareAt >= range.until) {
@@ -33,15 +34,15 @@ export function buildReport(input: ReportInput): Report {
     periods = [
       {
         name: 'before',
-        metrics: computeMetrics(data, { since: range.since, until: compareAt }, config),
+        metrics: computeMetrics(data, { since: range.since, until: compareAt }, config, prepared),
       },
       {
         name: 'after',
-        metrics: computeMetrics(data, { since: compareAt, until: range.until }, config),
+        metrics: computeMetrics(data, { since: compareAt, until: range.until }, config, prepared),
       },
     ];
   } else {
-    periods = [{ name: 'all', metrics: computeMetrics(data, range, config) }];
+    periods = [{ name: 'all', metrics: computeMetrics(data, range, config, prepared) }];
   }
   const [first, second] = periods;
   return {

@@ -1,5 +1,4 @@
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli } from '../src/cli.ts';
@@ -9,7 +8,7 @@ import { renderHtml } from '../src/render-html.ts';
 import { renderSummary } from '../src/render-summary.ts';
 import { renderText } from '../src/render-text.ts';
 import { ReportSchema } from '../src/schema.ts';
-import { cfg, day, fixture, range, sample } from './helpers.ts';
+import { cfg, day, fixture, range, sample, tmp } from './helpers.ts';
 
 const r = range('2026-01-01', '2026-01-15');
 const compared = (over: Partial<Parameters<typeof buildReport>[0]> = {}) =>
@@ -37,7 +36,6 @@ describe('AC-7 html dashboard', () => {
     expect(html).not.toContain('<img');
     expect(html).not.toContain('<script>');
     expect(html).toContain('&lt;img');
-    expect(html).toContain('&quot;'.replace('&quot;', '&lt;'));
   });
 
   it('shows the synthetic banner, the caveats and data notes', () => {
@@ -97,10 +95,9 @@ describe('AC-7 summary and text', () => {
     expect(text.split('\n').filter((l) => /\(n=\d+\/\d+\)/.test(l))).toHaveLength(5);
   });
 
-  it('the text for a single period shows five values', () => {
+  it('the text for a single period shows five values with sample sizes', () => {
     const text = renderText(compared({ compareAt: undefined }));
-    expect(text).toContain('Deployment frequency');
-    expect(text).toContain('n=');
+    expect(text.split('\n').filter((l) => /n=\d+$/.test(l))).toHaveLength(5);
   });
 });
 
@@ -135,8 +132,8 @@ describe('AC-8 cli', () => {
   ];
 
   it('runs end to end on the synthetic source, writes three valid files, and is deterministic', async () => {
-    const a = mkdtempSync(join(tmpdir(), 'dora-'));
-    const b = mkdtempSync(join(tmpdir(), 'dora-'));
+    const a = tmp();
+    const b = tmp();
     const first = await run([...synthetic, '--out', a]);
     await run([...synthetic, '--out', b]);
     expect(first.code).toBe(0);
@@ -150,7 +147,7 @@ describe('AC-8 cli', () => {
   });
 
   it('reads a normalized data file', async () => {
-    const file = join(mkdtempSync(join(tmpdir(), 'dora-')), 'data.json');
+    const file = join(tmp(), 'data.json');
     writeFileSync(file, JSON.stringify(sample()));
     const res = await run([
       'report',
@@ -166,7 +163,7 @@ describe('AC-8 cli', () => {
   });
 
   it('defaults to the 90 days before today', async () => {
-    const file = join(mkdtempSync(join(tmpdir(), 'dora-')), 'data.json');
+    const file = join(tmp(), 'data.json');
     writeFileSync(file, JSON.stringify(sample()));
     const res = await run(
       ['report', '--data', file],
@@ -177,7 +174,7 @@ describe('AC-8 cli', () => {
   });
 
   it('reads GitHub through the API, with a config file', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'dora-'));
+    const dir = tmp();
     const config = join(dir, 'dora.yml');
     writeFileSync(config, 'min_samples: 1\ndeployments:\n  source: releases\n');
     const routes: Record<string, unknown> = {

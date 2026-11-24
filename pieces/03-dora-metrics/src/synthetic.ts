@@ -1,5 +1,5 @@
 import { seededRandom } from '@adl/shared';
-import { DAY_MS, HOUR_MS } from './stats.js';
+import { DAY_MS, HOUR_MS } from './dates.js';
 import type { Change, Deployment, DoraData, Incident, Range } from './types.js';
 
 /**
@@ -56,10 +56,9 @@ export function generateSynthetic(opts: { seed: number; range: Range; rolloutAt:
       if (fixDeployAt >= until.getTime()) continue;
       const kind = rand();
       // About one failure in five is fixed by redeploying the previous version, with no PR.
-      if (kind < 0.2) {
-        // no change: a rollback deployment only
-      } else if (kind < 0.5) change(`Revert "Add feature ${prs}"`, [], fixMergedAt, 1);
-      else change(`Fix production issue ${prs + 1}`, ['hotfix'], fixMergedAt, between(1, 6));
+      if (kind >= 0.5)
+        change(`Fix production issue ${prs + 1}`, ['hotfix'], fixMergedAt, between(1, 6));
+      else if (kind >= 0.2) change(`Revert "Add feature ${prs}"`, [], fixMergedAt, 1);
       deploy(fixDeployAt);
       const openedAt = at + between(0.5, 2) * HOUR_MS;
       const closed = fixDeployAt + between(0.25, 2) * HOUR_MS;
@@ -71,11 +70,14 @@ export function generateSynthetic(opts: { seed: number; range: Range; rolloutAt:
     }
   }
 
-  const byTime = <T extends { at?: string; mergedAt?: string; openedAt?: string }>(x: T) =>
-    Date.parse((x.at ?? x.mergedAt ?? x.openedAt) as string);
+  // ISO strings from toISOString() sort the same as the times they stand for.
+  const asc =
+    <T>(key: (x: T) => string) =>
+    (a: T, b: T) =>
+      key(a).localeCompare(key(b));
   return {
-    deployments: deployments.sort((a, b) => byTime(a) - byTime(b)),
-    changes: changes.sort((a, b) => byTime(a) - byTime(b)),
-    incidents: incidents.sort((a, b) => byTime(a) - byTime(b)),
+    deployments: deployments.sort(asc((d) => d.at)),
+    changes: changes.sort(asc((c) => c.mergedAt)),
+    incidents: incidents.sort(asc((i) => i.openedAt)),
   };
 }
