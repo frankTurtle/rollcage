@@ -1,0 +1,13 @@
+title = "ai-devsecops-library gitleaks config"
+
+[extend]
+useDefault = true
+
+# Only the documented AWS example credentials used in test fixtures are allowlisted.
+# Anything else that looks like a secret still fails the scan.
+[[allowlists]]
+description = "AWS documented example credentials (AKIAIOSFODNN7EXAMPLE and its example secret)"
+regexes = [
+  '''AKIAIOSFODNN7EXAMPLE''',
+  '''wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY''',
+]

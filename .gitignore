@@ -1,0 +1,29 @@
+# dependencies and build output
+node_modules/
+dist/
+coverage/
+.venv/
+__pycache__/
+*.pyc
+.aws-sam/
+
+# secrets and local config: never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials
+.aws/
+
+# local tooling
+.DS_Store
+.vscode/
+.idea/
+*.log
+.claude/settings.local.json
+
+# runtime audit logs (demo logs are written here; fixtures live elsewhere)
+audit-logs/
+*.audit.jsonl
+!**/fixtures/*.audit.jsonl
