@@ -1,0 +1,31 @@
+name: piece-02-agent-policy
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      ['pieces/02-agent-policy/**', 'shared/ts/**', '.github/workflows/piece-02-agent-policy.yml']
+  pull_request:
+    paths:
+      ['pieces/02-agent-policy/**', 'shared/ts/**', '.github/workflows/piece-02-agent-policy.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-demo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @adl/agent-policy coverage
+      - run: pnpm --filter @adl/agent-policy build
+      - name: Demo runs offline end to end
+        run: pnpm demo:02
