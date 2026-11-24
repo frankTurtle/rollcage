@@ -1,0 +1,30 @@
+[
+  {
+    "tag_name": "v3",
+    "target_commitish": "main",
+    "published_at": null,
+    "draft": true,
+    "prerelease": false
+  },
+  {
+    "tag_name": "v2.1-rc",
+    "target_commitish": "main",
+    "published_at": "2026-01-15T10:00:00Z",
+    "draft": false,
+    "prerelease": true
+  },
+  {
+    "tag_name": "v2",
+    "target_commitish": "abc",
+    "published_at": "2026-01-14T10:00:00Z",
+    "draft": false,
+    "prerelease": false
+  },
+  {
+    "tag_name": "v1",
+    "target_commitish": "def",
+    "published_at": "2025-11-14T10:00:00Z",
+    "draft": false,
+    "prerelease": false
+  }
+]

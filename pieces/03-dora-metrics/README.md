@@ -111,8 +111,8 @@ pnpm --filter @adl/dora-metrics dora report --repo owner/name --config dora.yml 
 
 ### Definitions in detail
 
-- **Period.** `[since, until]`. With `--compare-at D`, the before period is `[since, D)` and the
-  after period is `[D, until]`. Each is measured on its own.
+- **Period.** `[since, until)` (the end is excluded). With `--compare-at D`, the before period is
+  `[since, D)` and the after period is `[D, until)`. Each is measured on its own.
 - **Deployment.** A successful deployment, from the chosen source. Failed deployment attempts are
   counted separately and feed recovery time when `recovery_source` is `next-deploy`.
 - **Lead time.** For each merged pull request: first commit author time to the first successful
@@ -126,7 +126,7 @@ pnpm --filter @adl/dora-metrics dora report --repo owner/name --config dora.yml 
   closed. `next-deploy`: for each failed deployment attempt or marked deployment, hours to the
   next successful deployment that is not itself marked.
 - **Rework rate.** The first successful deployment at or after each revert or hotfix merge is a
-  rework deployment. Rate is distinct rework deployments over successful deployments. This differs
+  rework deployment. A rollback done by redeploying an old version, with no PR, is not seen. Rate is distinct rework deployments over successful deployments. This differs
   from change fail rate: that counts the deployments that broke, this counts the ones that fixed.
 - **p90.** Nearest-rank percentile.
 

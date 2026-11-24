@@ -1,0 +1,19 @@
+{
+  "name": "@adl/dora-metrics",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dora": "tsx src/bin.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "demo": "bash demo/demo.sh",
+    "demo:reset": "rm -rf demo/out"
+  },
+  "dependencies": {
+    "@adl/shared": "workspace:*",
+    "tsx": "^4.23.15",
+    "zod": "^3.23.0"
+  }
+}

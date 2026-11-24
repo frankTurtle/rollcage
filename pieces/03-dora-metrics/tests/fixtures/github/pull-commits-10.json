@@ -1,0 +1,30 @@
+[
+  {
+    "commit": {
+      "author": {
+        "date": "2026-01-04T12:00:00Z"
+      },
+      "committer": {
+        "date": "2026-01-04T12:01:00Z"
+      }
+    }
+  },
+  {
+    "commit": {
+      "author": {
+        "date": "2026-01-03T09:00:00Z"
+      },
+      "committer": {
+        "date": "2026-01-04T11:00:00Z"
+      }
+    }
+  },
+  {
+    "commit": {
+      "author": null,
+      "committer": {
+        "date": "2026-01-04T10:00:00Z"
+      }
+    }
+  }
+]

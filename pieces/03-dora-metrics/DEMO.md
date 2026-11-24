@@ -11,8 +11,8 @@ pnpm demo:03:reset   # clean state before every take
 pnpm demo:03         # the whole demo end to end
 ```
 
-The demo uses a **synthetic** history generated with a fixed seed: 26 weeks, with a made-up AI
-rollout on a made-up date. Say so on camera. It shows how the numbers read, not a result.
+The demo uses a **synthetic** history generated with a fixed seed: 39 weeks, with a made-up AI
+rollout on 2026-04-06. Say so on camera. It shows how the numbers read, not a result.
 
 ## 0:00 to 0:20, the problem
 
