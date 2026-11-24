@@ -43,6 +43,9 @@ complete audit trail. "Good" is 100% complete trails and a weekly review of ever
   settings through managed (organization) settings.
 - It covers Claude Code. Copilot and Cursor are covered by the policy text only; use their admin
   controls and compare them in piece 14.
+- A wildcard with no literal start, such as `cat *.json`, is checked only against wildcard secret
+  patterns (`*.pem`), so it can still read a file named `secrets.json`. Tighter matching blocked
+  ordinary commands like `grep x .github/workflows/*.yml` during this repo's own use.
 - MCP tools are not inspected. Govern them with permission rules.
 - Environment dumps (`env`, `printenv`) are not blocked, and a `Grep` over a whole directory can
   surface a secret file's contents if you do not also set the deny rules in the template.

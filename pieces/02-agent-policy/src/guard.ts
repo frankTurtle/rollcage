@@ -74,21 +74,34 @@ function isSecretPath(abs: string, ctx: GuardContext): boolean {
   return matchesAny(abs, ctx.config.secret_paths) && !matchesAny(abs, ctx.config.secret_exceptions);
 }
 
-/** File names the configured secret patterns would match (`*` becomes `x`), used to test wildcards. */
-const secretProbes = (ctx: GuardContext): string[] =>
-  ctx.config.secret_paths.filter((p) => !p.includes('/')).map((p) => p.replace(/[*?]/g, 'x'));
+/**
+ * File names the configured secret patterns would match (`*` becomes `x`), used to test wildcards.
+ * `wild` marks names made from a wildcard pattern such as `*.pem`.
+ */
+const secretProbes = (ctx: GuardContext): { name: string; wild: boolean }[] =>
+  ctx.config.secret_paths
+    .filter((p) => !p.includes('/'))
+    .map((p) => ({ name: p.replace(/[*?]/g, 'x'), wild: /[*?]/.test(p) }));
 
-/** True if a wildcard such as `.env*` or `*.pem` could expand to a secret file name. */
+/**
+ * True if a wildcard such as `.env*` or `*.pem` could expand to a secret file name.
+ * A wildcard with no literal start (`*.yml`) is only compared with wildcard patterns, so that
+ * `cat *.yml` is not blocked just because a file named `secrets.yml` could exist.
+ */
 function wildcardHitsSecret(token: string, ctx: GuardContext): boolean {
   if (!/[*?[]/.test(token)) return false;
   const glob = basename(token);
   // A bare `*` or `?` says nothing about which files are meant; require some literal text.
   if (glob.replace(/[*?[\]]/g, '').length < 2) return false;
   const re = globToRegExp(glob);
+  const hasLiteralStart = glob.search(/[*?[]/) > 0;
   // Shell globs skip dotfiles unless the pattern itself starts with a dot.
   return secretProbes(ctx).some(
     (p) =>
-      (!p.startsWith('.') || glob.startsWith('.')) && re.test(p) && isSecretPath(`/x/${p}`, ctx),
+      (p.wild || hasLiteralStart) &&
+      (!p.name.startsWith('.') || glob.startsWith('.')) &&
+      re.test(p.name) &&
+      isSecretPath(`/x/${p.name}`, ctx),
   );
 }
 
@@ -351,7 +364,8 @@ function checkWriteCommand(cmd: string, args: string[], cwd: string, ctx: GuardC
   else if (WRITE_LAST.has(cmd)) targets = positionals(args).slice(-1);
   else if (cmd === 'dd') targets = args.filter((a) => a.startsWith('of=')).map((a) => a.slice(3));
   else if (cmd === 'sed' && args.some((a) => /^-[a-zA-Z]*i/.test(a) || a === '--in-place')) {
-    const pos = positionals(args);
+    // BSD sed takes an empty backup suffix as a separate argument (`sed -i '' ...`); skip it.
+    const pos = positionals(args).filter((a) => a !== '');
     targets = args.some((a) => a === '-e' || a === '-f') ? pos : pos.slice(1);
   } else if (cmd === 'git') {
     const { sub, rest } = gitSubcommand(args);

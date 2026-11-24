@@ -122,6 +122,8 @@ describe('AC-2 shell commands that touch secrets', () => {
       'cat ~/.aws/credentials',
       'cat .e*',
       'cat *.pem',
+      'cat sec*',
+      'cat cred*',
       'docker run --env-file=.env img',
       'sh -c "cat .env"',
       "bash -lc 'cat .env'",
@@ -146,6 +148,9 @@ describe('AC-2 shell commands that touch secrets', () => {
       'cat environment.md',
       'cat *.md',
       'cat *',
+      'cat *.yml',
+      'grep -n pnpm .github/workflows/*.yml',
+      'cat *.json',
       'git diff -- .env.example',
       'git commit -m "update .env docs"',
     ]);
