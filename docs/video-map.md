@@ -8,7 +8,7 @@ Hook lines marked * depend on a statistic or figure that is not yet verified in 
 | 01 | pr-risk-gate | AI made your team faster. DORA says it also made you break more. Here's the fix.* | MVP | demo-ready |
 | 02 | agent-policy | Your engineers are already using AI. Here's the one-page policy and the guardrails that enforce it. | MVP | demo-ready |
 | 03 | dora-metrics | How to prove AI is paying off: the 5 DORA numbers your CFO will understand. | MVP | demo-ready |
-| 04 | secrets-guard | The leaked AWS key that costs $40K overnight, and the 3-layer guard that stops it.* ($40K is unsourced) | MVP | planned |
+| 04 | secrets-guard | The leaked AWS key that costs $40K overnight, and the 3-layer guard that stops it.* ($40K is unsourced) | MVP | demo-ready (in review) |
 | 05 | sbom-vuln-triage | 800 CVEs, 6 that matter: AI-assisted vulnerability triage. | backlog | planned |
 | 06 | policy-gates | 76% find compliance issues after deployment. Move them into the pipeline.* | backlog | planned |
 | 07 | ci-failure-triage | Is it the code or the pipeline? Let AI triage your CI failures. | backlog | planned |
