@@ -55,3 +55,16 @@ it does not replace a human reading the primary source.
   The default in `shared/ts/src/config.ts` is `claude-sonnet-5-5` (structured classification
   and summaries; override with `ANTHROPIC_MODEL`).
 - Status: re-check before each release; model lineups change.
+
+## GitHub REST API (references for piece 03)
+
+- Read 2026-11-24 from docs.github.com/en/rest: deployments, deployment statuses, pull requests,
+  workflow runs, issues, releases, rate limits, pagination. Not statistics; listed here so the
+  endpoint facts piece 03 relies on have a source.
+- Facts used: `per_page` max 100; list ordering is not documented for deployments, statuses, PR
+  commits or releases (sorted client-side); deployment statuses older than 90 days are deleted;
+  the issues list also returns pull requests (`pull_request` key); `GITHUB_TOKEN` in Actions has a
+  limit of 1,000 requests per hour per repository; the docs show `X-GitHub-Api-Version: 2026-03-10`.
+- Not confirmed from the docs: the per-workflow runs endpoint was read from a summary only (its
+  parameters match the repo-wide runs endpoint). Verify before relying on it.
+- Status: re-check before each release; API versions and limits change.

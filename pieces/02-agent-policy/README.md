@@ -43,6 +43,9 @@ complete audit trail. "Good" is 100% complete trails and a weekly review of ever
   settings through managed (organization) settings.
 - It covers Claude Code. Copilot and Cursor are covered by the policy text only; use their admin
   controls and compare them in piece 14.
+- A wildcard with no literal start, such as `cat *.json`, is checked only against wildcard secret
+  patterns (`*.pem`), so it can still read a file named `secrets.json`. Tighter matching blocked
+  ordinary commands like `grep x .github/workflows/*.yml` during this repo's own use.
 - MCP tools are not inspected. Govern them with permission rules.
 - Environment dumps (`env`, `printenv`) are not blocked, and a `Grep` over a whole directory can
   surface a secret file's contents if you do not also set the deny rules in the template.
@@ -185,6 +188,7 @@ pnpm --filter @adl/agent-policy agent-policy metrics --log .claude/audit/agent.a
 
 Draft for review. The unit tests use payload shapes taken from the docs. In addition, this
 repository's own `.claude/settings.json` ran the hooks during this build, and the live records have
-the documented fields (`session_id`, `tool_use_id`, `tool_name`). The hook's block path was checked
-live only through the permission-rule layer (see Limits), not through an exit-2 block in a running
-agent. The demo replays payloads; it does not drive a real agent.
+the documented fields (`session_id`, `tool_use_id`, `tool_name`). The hook's exit-2 block path was
+then seen live once: during piece 03 a shell command with a variable as its redirect target was
+refused with rule `write-outside-repo`. A `Read` of `.env` was refused by the deny rule instead
+(see Limits). The demo replays payloads; it does not drive a real agent.

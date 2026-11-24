@@ -1,0 +1,54 @@
+name: DORA metrics
+description: Compute the five DORA metrics from the GitHub API, with an optional before and after split.
+author: ai-devsecops-library
+
+inputs:
+  config:
+    description: Path to dora.yml, relative to the workspace. Defaults are used if the file is missing.
+    default: dora.yml
+  days:
+    description: How many days of history to measure, ending today (UTC).
+    default: '90'
+  compare-at:
+    description: Rollout date (YYYY-MM-DD) to split before and after. Empty skips the comparison.
+    default: ''
+  github-token:
+    description: Token with read access to deployments, pull requests, issues and actions.
+    default: ${{ github.token }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version: 24
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ github.action_path }}/../..
+      run: |
+        corepack enable
+        pnpm install --frozen-lockfile --filter "@adl/dora-metrics..."
+    - name: Compute metrics
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        DORA_CONFIG: ${{ github.workspace }}/${{ inputs.config }}
+        DORA_DAYS: ${{ inputs.days }}
+        DORA_COMPARE_AT: ${{ inputs.compare-at }}
+        DORA_REPO: ${{ github.repository }}
+        DORA_OUT: ${{ runner.temp }}/dora-out
+      run: |
+        until=$(date -u +%F)
+        since=$(date -u -d "$DORA_DAYS days ago" +%F)
+        args=(report --repo "$DORA_REPO" --since "$since" --until "$until" --out "$DORA_OUT")
+        [ -f "$DORA_CONFIG" ] && args+=(--config "$DORA_CONFIG")
+        [ -n "$DORA_COMPARE_AT" ] && args+=(--compare-at "$DORA_COMPARE_AT")
+        pnpm exec tsx src/bin.ts "${args[@]}"
+        cat "$DORA_OUT/summary.md" >> "$GITHUB_STEP_SUMMARY"
+    - name: Upload report
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: dora-metrics-${{ github.run_id }}
+        path: ${{ runner.temp }}/dora-out
+        if-no-files-found: ignore

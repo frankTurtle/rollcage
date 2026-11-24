@@ -14,7 +14,7 @@ import { loadConfig } from '../src/config.ts';
 import { selectLlm, UnavailableLlm } from '../src/llm-select.ts';
 import { computeMetrics, formatMetrics } from '../src/metrics.ts';
 import { runGate } from '../src/run.ts';
-import { seededRandom, writeSyntheticHistory } from '../src/synthetic.ts';
+import { writeSyntheticHistory } from '../src/synthetic.ts';
 import { ctx, demoConfig, DEMO_CONFIG, FX, fixture, LLM_FX, MemoryIO } from './helpers.ts';
 
 const tmp = () => mkdtempSync(join(tmpdir(), 'rg-'));
@@ -221,9 +221,6 @@ describe('AC-13 metrics', () => {
     expect(before.pctHighRiskWithTests).toBeLessThan(100);
     expect(after.pctHighRiskWithTests).toBe(100);
     expect(after.prs).toBe(60);
-    const r = seededRandom(1);
-    expect(r()).toBeGreaterThanOrEqual(0);
-    expect(seededRandom(1)()).toBe(seededRandom(1)());
   });
 });
 

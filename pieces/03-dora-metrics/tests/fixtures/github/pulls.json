@@ -1,0 +1,38 @@
+[
+  {
+    "number": 12,
+    "title": "Revert \"Add cart\"",
+    "merged_at": "2026-01-11T09:00:00Z",
+    "updated_at": "2026-01-11T09:05:00Z",
+    "labels": [
+      {
+        "name": "revert"
+      }
+    ]
+  },
+  {
+    "number": 11,
+    "title": "Closed without merge",
+    "merged_at": null,
+    "updated_at": "2026-01-09T09:00:00Z",
+    "labels": []
+  },
+  {
+    "number": 10,
+    "title": "Add cart",
+    "merged_at": "2026-01-04T16:00:00Z",
+    "updated_at": "2026-01-04T16:30:00Z",
+    "labels": [
+      {
+        "name": "feature"
+      }
+    ]
+  },
+  {
+    "number": 9,
+    "title": "Old work",
+    "merged_at": "2025-11-01T09:00:00Z",
+    "updated_at": "2025-11-02T09:00:00Z",
+    "labels": []
+  }
+]

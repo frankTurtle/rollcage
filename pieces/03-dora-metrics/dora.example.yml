@@ -1,0 +1,14 @@
+# Example config. Every key is optional; omitted keys use the defaults in src/config.ts.
+deployments:
+  source: deployments-api # or: releases, workflow-runs
+  environment: production
+  # workflow: deploy.yml  # used by workflow-runs
+  branch: main
+
+failure_window_hours: 72
+incident_label: incident
+hotfix_labels: [hotfix]
+revert_title_prefix: Revert
+recovery_source: incidents # or: next-deploy
+min_samples: 5
+max_requests: 800
