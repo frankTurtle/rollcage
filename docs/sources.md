@@ -68,3 +68,37 @@ it does not replace a human reading the primary source.
 - Not confirmed from the docs: the per-workflow runs endpoint was read from a summary only (its
   parameters match the repo-wide runs endpoint). Verify before relying on it.
 - Status: re-check before each release; API versions and limits change.
+
+## Cost and speed of leaked AWS keys (candidates for piece 04's hook)
+
+The "$40K overnight" figure in the video title has **no source**. A web search on 2026-11-24
+returned the items below. They were seen as search results only; **none of the pages was read**,
+so no number here may be quoted until someone reads the source.
+
+- Tom's Hardware, "$45,000 AWS Crypto-Mining Hack Generates $800 of Monero":
+  https://www.tomshardware.com/news/aws-45000-usd-bill-for-crypto-mining-hack
+  (a $45,000 bill; closest sourced alternative to the $40K hook).
+- The Register, 2023, "Cryptojackers steal AWS credentials from GitHub in 5 minutes":
+  https://www.theregister.com/2023/10/30/cryptojackers-steal-aws-credentials-from-github-in-5-minutes/522761
+- Palo Alto Networks Unit 42, EleKtra-Leak research on exposed IAM keys:
+  https://unit42.paloaltonetworks.com/malicious-operations-of-exposed-iam-keys-cryptojacking/
+- Status: VERIFY BEFORE PUBLISHING. Read each page and confirm the figure, the year and the wording.
+
+## GitHub secret scanning (references for piece 04)
+
+- Read 2026-11-24: webhook events and payloads
+  (https://docs.github.com/en/webhooks/webhook-events-and-payloads), validating webhook deliveries
+  (https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries), supported
+  secret scanning patterns, about secret scanning, REST secret scanning alerts and repository
+  update.
+- Facts used: `secret_scanning_alert` actions include `created` and `publicly_leaked`;
+  `X-Hub-Signature-256` is `sha256=` plus the HMAC hex digest of the raw body; the AWS access key
+  id slug is `aws_access_key_id` and AWS is a secret scanning partner; the REST alert object has
+  `secret`, `created_at`, `secret_type`, `number` and `repository.full_name`, and
+  `hide_secret` defaults to false.
+- Not confirmed: whether the **webhook** payload includes the literal secret (the page documents no
+  `alert` sub-fields). The handler therefore supports fetching it over REST.
+- Not read: AWS documentation (IAM resource-level permissions, Lambda runtimes, Function URL event
+  format, SAM esbuild build, AWS's handling of exposed keys). The repository's own guardrails
+  blocked `docs.aws.amazon.com` for the research agent. Verify these before deploying.
+- Status: re-check before each release.
