@@ -1,0 +1,38 @@
+diff --git a/src/auth/session.ts b/src/auth/session.ts
+index 1111111..2222222 100644
+--- a/src/auth/session.ts
++++ b/src/auth/session.ts
+@@ -12,6 +12,14 @@
+ export async function validateSession(token: string): Promise<Session | null> {
+   if (!token) return null;
+-  const claims = await verifyToken(token, getPublicKey());
+-  if (!claims) return null;
++  // Fast path for cached sessions
++  const cached = cache.get(token);
++  if (cached && cached.expiresAt > Date.now()) {
++    return cached.session;
++  }
++  const claims = decode(token);
++  if (!claims) return null;
++  if (claims.exp * 1000 < Date.now()) return null;
++  const session = { userId: claims.sub, roles: claims.roles ?? [] };
++  cache.set(token, { session, expiresAt: claims.exp * 1000 });
+   return session;
+ }
+diff --git a/tests/auth/session.test.ts b/tests/auth/session.test.ts
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/tests/auth/session.test.ts
+@@ -0,0 +1,11 @@
++import { describe, expect, it } from 'vitest';
++import { validateSession } from '../../src/auth/session';
++
++describe('validateSession', () => {
++  it('rejects a token with an invalid signature', async () => {
++    expect(await validateSession(forgedToken())).toBeNull();
++  });
++  it('rejects an expired token', async () => {
++    expect(await validateSession(expiredToken())).toBeNull();
++  });
++});

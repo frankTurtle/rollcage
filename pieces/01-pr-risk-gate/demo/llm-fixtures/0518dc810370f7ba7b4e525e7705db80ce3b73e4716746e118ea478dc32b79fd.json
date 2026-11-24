@@ -1,0 +1,4 @@
+{
+  "text": "{\"risk_level\":\"low\",\"reasons\":[],\"required_checks\":[],\"assumptions\":[\"Only documentation files changed.\"]}",
+  "model": "fake-model"
+}

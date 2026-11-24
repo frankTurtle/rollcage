@@ -1,0 +1,12 @@
+diff --git a/README.md b/README.md
+index 1111111..2222222 100644
+--- a/README.md
++++ b/README.md
+@@ -10,5 +10,6 @@
+ ## Setup
+ 
+-Install dependencies with npm.
++Install dependencies with pnpm.
++Node 24 or newer is required.
+ 
+ ## Usage
