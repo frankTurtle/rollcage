@@ -1,0 +1,13 @@
+# Layer 1. Copy to .pre-commit-config.yaml, then: pre-commit install
+# `secrets-guard precommit` runs gitleaks on the staged changes and, when it blocks a commit,
+# appends a record (rule ids and file paths, never the secret) to .git/secrets-guard.audit.jsonl.
+repos:
+  - repo: local
+    hooks:
+      - id: secrets-guard
+        name: secrets-guard (gitleaks)
+        # Point this at wherever you run the CLI from, for example:
+        #   pnpm --dir path/to/ai-devsecops-library --filter @adl/secrets-guard exec tsx src/bin.ts precommit
+        entry: secrets-guard precommit --config .gitleaks.toml
+        language: system
+        pass_filenames: false

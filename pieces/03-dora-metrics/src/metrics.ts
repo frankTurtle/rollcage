@@ -1,7 +1,8 @@
 import type { DoraConfig } from './config.js';
 import { HOUR_MS, DAY_MS, inRange, ms } from './dates.js';
 import type { Metrics } from './schema.js';
-import { round1, summarize } from './stats.js';
+import { round1 } from '@adl/shared';
+import { summarize } from './stats.js';
 import type { Change, Deployment, DoraData, Range } from './types.js';
 
 const isRevert = (c: Change, cfg: DoraConfig): boolean =>
