@@ -12,7 +12,7 @@ import {
   notifier,
   secretReader,
 } from '../src/lambda/aws-adapters.ts';
-import type { AuditEntry } from '../src/lambda/ports.ts';
+import type { LeakAuditEntry } from '../src/types.ts';
 
 interface Sent {
   name: string;
@@ -106,7 +106,7 @@ describe('other adapters', () => {
   });
 
   it('auditWriter does a conditional put so an existing record is never overwritten', async () => {
-    const entry: AuditEntry = {
+    const entry: LeakAuditEntry = {
       timestamp: '2026-02-01T10:01:35.000Z',
       actor: 'secrets-guard',
       action: 'respond-to-leak',

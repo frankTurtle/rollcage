@@ -10,7 +10,8 @@
     "coverage": "vitest run --coverage",
     "validate": "sam validate --lint --template-file template.yaml",
     "demo": "bash demo/demo.sh",
-    "demo:reset": "rm -rf demo/out"
+    "demo:reset": "rm -rf demo/out",
+    "build": "node scripts/build.mjs"
   },
   "dependencies": {
     "@adl/shared": "workspace:*",
@@ -22,6 +23,7 @@
     "@aws-sdk/client-iam": "^3.1177.0",
     "@aws-sdk/client-secrets-manager": "^3.1177.0",
     "@aws-sdk/client-sns": "^3.1177.0",
-    "@aws-sdk/client-sts": "^3.1177.0"
+    "@aws-sdk/client-sts": "^3.1177.0",
+    "esbuild": "^0.28.2"
   }
 }

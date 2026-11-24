@@ -60,9 +60,9 @@ describe('config', () => {
 
   it('parses the account list and validates the path', () => {
     expect(
-      loadGuardConfig({ ALLOWED_ACCOUNT_IDS: ' 111122223333 , 444455556666,', USER_PATH: '/a/b/' }),
+      loadGuardConfig({ ALLOWED_ACCOUNT_IDS: ` ${ACCOUNT} , 444455556666,`, USER_PATH: '/a/b/' }),
     ).toMatchObject({
-      allowedAccountIds: ['111122223333', '444455556666'],
+      allowedAccountIds: [ACCOUNT, '444455556666'],
       userPath: '/a/b/',
     });
     expect(() => loadGuardConfig({ USER_PATH: 'no-slashes' })).toThrow('USER_PATH');
@@ -157,7 +157,7 @@ describe('AC-2 and AC-3 the handler gate', () => {
     expect((await handler({ headers: {} })).statusCode).toBe(401);
   });
 
-  it('mentions the account only through the allowlist, never in the response', async () => {
+  it('never echoes the key or the account id in the response', async () => {
     const { handler } = setup();
     const res = await handler(request(body));
     expect(res.body).not.toContain(KEY);

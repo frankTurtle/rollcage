@@ -6,8 +6,8 @@ repos:
     hooks:
       - id: secrets-guard
         name: secrets-guard (gitleaks)
-        # Point this at wherever you run the CLI from, for example:
-        #   pnpm --dir path/to/ai-devsecops-library --filter @adl/secrets-guard exec tsx src/bin.ts precommit
-        entry: secrets-guard precommit --config .gitleaks.toml
+        # Build the one-file CLI in the library (pnpm --filter @adl/secrets-guard build), copy
+        # dist/secrets-guard.mjs to .githooks/, and keep gitleaks installed.
+        entry: node .githooks/secrets-guard.mjs precommit --config .gitleaks.toml
         language: system
         pass_filenames: false

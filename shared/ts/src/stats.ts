@@ -26,3 +26,16 @@ export function percentile(values: number[], p: number): number | null {
 
 /** Round to one decimal place. */
 export const round1 = (n: number): number => Math.round(n * 10) / 10;
+
+/** Median and p90 rounded to one decimal, or nulls when there are fewer than `min` values. */
+export function summarize(
+  values: number[],
+  min = 0,
+): { median: number | null; p90: number | null } {
+  if (values.length === 0 || values.length < min) return { median: null, p90: null };
+  const sorted = [...values].sort((a, b) => a - b);
+  return {
+    median: round1(medianOfSorted(sorted) as number),
+    p90: round1(percentileOfSorted(sorted, 90) as number),
+  };
+}

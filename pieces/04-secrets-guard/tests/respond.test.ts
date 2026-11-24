@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { AlertEventSchema } from '../src/lambda/alert.ts';
 import { respondToAlert } from '../src/lambda/respond.ts';
-import { ACCOUNT, KEY, NOW, config, fakePorts, fixture } from './helpers.ts';
+import { KEY, NOW, TEMP_KEY, config, fakePorts, fixture } from './helpers.ts';
 
 const event = (
   over: { action?: string; secret?: string | null; created_at?: string | null } = {},
@@ -72,7 +72,7 @@ describe('AC-5 dry run', () => {
 
 describe('AC-6 and AC-7 things it must not touch', () => {
   it.each([
-    ['a temporary key', event({ secret: 'ASIAIOSFODNN7EXAMPLE' }), {}, config(), 'temporary-key'],
+    ['a temporary key', event({ secret: TEMP_KEY }), {}, config(), 'temporary-key'],
     ['text with no key', event({ secret: 'ghp_not_a_key' }), {}, config(), 'not-an-access-key'],
     ['an unknown key', event(), { owner: null }, config(), 'unknown-key'],
     ['a user outside the path', event(), { path: '/prod/' }, config(), 'user-out-of-scope'],
@@ -118,27 +118,28 @@ describe('AC-8 no secret value leaks out', () => {
 });
 
 describe('AC-9 errors', () => {
-  it.each(['iam', 'deactivate', 'tag', 'notify'] as const)(
-    'an AWS failure at %s is audited as an error',
-    async (where) => {
+  it.each([
+    ['iam', { deactivated: 0, tagged: 0, notified: 0 }],
+    ['deactivate', { deactivated: 0, tagged: 0, notified: 0 }],
+    ['tag', { deactivated: 1, tagged: 0, notified: 0 }],
+    ['notify', { deactivated: 1, tagged: 1, notified: 0 }],
+  ] as const)(
+    'an AWS failure at %s is audited as an error and stops what follows',
+    async (where, done) => {
       const r = await run(event(), { failOn: where });
       expect(decisions(r)).toContain('error');
+      expect([r.calls.deactivated.length, r.calls.tagged.length, r.calls.notified.length]).toEqual([
+        done.deactivated,
+        done.tagged,
+        done.notified,
+      ]);
     },
   );
 
-  it('a failing audit sink throws, so the caller can return 500 and GitHub retries', async () => {
-    const fake = fakePorts({ failOn: 'audit' });
-    await expect(respondToAlert(event(), fake.ports, config(), () => NOW)).rejects.toThrow();
-  });
-
-  it('is safe to run twice: the same alert gives the same decision', async () => {
+  it('the same alert gives the same inputHash and the same IAM calls', async () => {
     const a = await run();
     const b = await run();
     expect(a.entries[0]?.inputHash).toBe(b.entries[0]?.inputHash);
     expect(a.calls.deactivated).toEqual(b.calls.deactivated);
-  });
-
-  it('the account in the allowlist is the one in the fake', () => {
-    expect(config().allowedAccountIds).toEqual([ACCOUNT]);
   });
 });

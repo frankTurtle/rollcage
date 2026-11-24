@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { readAuditRecords, verifyAuditChain } from '@adl/shared';
 import { describe, expect, it } from 'vitest';
 import { runCli } from '../src/cli.ts';
-import type { AuditEntry } from '../src/lambda/ports.ts';
+import type { LeakAuditEntry } from '../src/types.ts';
 import { computeMetrics, formatMetrics } from '../src/metrics.ts';
 import { runPrecommit } from '../src/precommit.ts';
 import type { PrecommitDeps } from '../src/precommit.ts';
@@ -107,7 +107,7 @@ describe('AC-10 pre-commit wrapper', () => {
   });
 });
 
-const entry = (decision: AuditEntry['decision'], seconds?: number): AuditEntry => ({
+const entry = (decision: LeakAuditEntry['decision'], seconds?: number): LeakAuditEntry => ({
   timestamp: NOW.toISOString(),
   actor: 'secrets-guard',
   action: 'respond-to-leak',

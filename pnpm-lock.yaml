@@ -100,6 +100,9 @@ importers:
       '@aws-sdk/client-sts':
         specifier: ^3.1177.0
         version: 3.1177.0
+      esbuild:
+        specifier: ^0.28.2
+        version: 0.28.2
 
   shared/ts:
     dependencies:

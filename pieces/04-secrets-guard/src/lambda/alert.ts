@@ -6,9 +6,7 @@ export const AlertEventSchema = z.object({
   alert: z.object({
     number: z.number().int(),
     created_at: z.string().optional(),
-    secret_type: z.string().optional(),
     secret: z.string().optional(),
-    html_url: z.string().optional(),
   }),
   repository: z.object({ full_name: z.string() }),
 });

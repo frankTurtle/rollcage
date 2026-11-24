@@ -1,8 +1,8 @@
-import { readFileSync, existsSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { readAuditRecords } from '@adl/shared';
 import { computeMetrics, formatMetrics } from './metrics.js';
-import type { AuditEntry } from './lambda/ports.js';
+import type { LeakAuditEntry } from './types.js';
 import { runPrecommit } from './precommit.js';
 import type { PrecommitDeps } from './precommit.js';
 
@@ -16,13 +16,6 @@ export interface CliDeps {
 const USAGE = `Usage:
   secrets-guard precommit [--config FILE]     run as a git pre-commit hook
   secrets-guard metrics [--precommit FILE] [--lambda FILE] [--label TEXT]`;
-
-function readLambdaEntries(path: string): AuditEntry[] {
-  return readFileSync(path, 'utf8')
-    .split('\n')
-    .filter(Boolean)
-    .map((line) => JSON.parse(line) as AuditEntry);
-}
 
 export function runCli(argv: string[], deps: CliDeps): number {
   const [command, ...rest] = argv;
@@ -43,7 +36,7 @@ export function runCli(argv: string[], deps: CliDeps): number {
       });
       const metrics = computeMetrics(
         values.precommit ? readAuditRecords(values.precommit) : [],
-        values.lambda ? readLambdaEntries(values.lambda) : [],
+        values.lambda ? readAuditRecords<LeakAuditEntry>(values.lambda) : [],
       );
       deps.out(formatMetrics(values.label ?? 'Secrets guard', metrics));
       return 0;

@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { loadDoraConfig } from '../src/config.ts';
 import { inRange, isoDay, ms, parseDate } from '../src/dates.ts';
-import { summarize } from '../src/stats.ts';
+import { summarize } from '@adl/shared';
 import { day, range } from './helpers.ts';
 
 describe('dates', () => {

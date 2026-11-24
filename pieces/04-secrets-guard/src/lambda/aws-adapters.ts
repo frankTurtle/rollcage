@@ -14,7 +14,8 @@ import { PublishCommand } from '@aws-sdk/client-sns';
 import type { STSClient } from '@aws-sdk/client-sts';
 import { GetCallerIdentityCommand } from '@aws-sdk/client-sts';
 import { GitHubHttp } from '@adl/shared';
-import type { AuditEntry, IamPort } from './ports.js';
+import type { LeakAuditEntry } from '../types.js';
+import type { IamPort } from './ports.js';
 
 /** Thin wrappers over the AWS SDK v3. They hold no decisions; the logic is in respond.ts. */
 
@@ -72,7 +73,7 @@ export const notifier =
 /** Append-only: the condition makes a second write with the same key fail instead of overwriting. */
 export const auditWriter =
   (client: DynamoDBClient, tableName: string) =>
-  async (entry: AuditEntry): Promise<void> => {
+  async (entry: LeakAuditEntry): Promise<void> => {
     await client.send(
       new PutItemCommand({
         TableName: tableName,

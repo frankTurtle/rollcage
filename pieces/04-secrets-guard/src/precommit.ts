@@ -14,10 +14,20 @@ export interface PrecommitDeps {
   configPath?: string | undefined;
   now(): Date;
   err(text: string): void;
+  /** Called once at the end, whatever the outcome, to remove temporary files. */
+  cleanup?(): void;
 }
 
 /** Exit codes: 0 clean, 1 blocked, 2 could not run the scan (also blocks the commit). */
 export function runPrecommit(deps: PrecommitDeps): 0 | 1 | 2 {
+  try {
+    return scan(deps);
+  } finally {
+    deps.cleanup?.();
+  }
+}
+
+function scan(deps: PrecommitDeps): 0 | 1 | 2 {
   const args = [
     'git',
     '--pre-commit',
@@ -52,13 +62,14 @@ export function runPrecommit(deps: PrecommitDeps): 0 | 1 | 2 {
     rules[f.RuleID] = (rules[f.RuleID] ?? 0) + 1;
     files.add(f.File);
   }
+  const sorted = [...files].sort();
   try {
     new AuditLogger(deps.auditPath, deps.now).append({
       actor: 'secrets-guard',
       action: 'precommit-block',
-      input: { rules, files: [...files].sort() },
+      input: { rules, files: sorted },
       decision: 'blocked',
-      detail: { rules, files: [...files].sort().slice(0, 20), fileCount: files.size },
+      detail: { rules, files: sorted.slice(0, 20), fileCount: sorted.length },
     });
   } catch {
     deps.err('secrets-guard: could not write the audit record. The commit is still blocked.');

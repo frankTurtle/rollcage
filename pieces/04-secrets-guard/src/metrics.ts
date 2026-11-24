@@ -1,11 +1,11 @@
-import { medianOfSorted, percentileOfSorted, round1 } from '@adl/shared';
+import { summarize } from '@adl/shared';
 import type { AuditRecord } from '@adl/shared';
-import type { AuditEntry } from './lambda/ports.js';
+import type { Decision, LeakAuditEntry } from './types.js';
 
 export interface GuardMetrics {
   blockedPreCommit: number;
   blockedByRule: Record<string, number>;
-  /** Lambda decisions: deactivated, dry-run, error, and everything else (skipped). */
+  /** Lambda decisions, grouped. Every Decision lands in exactly one group. */
   deactivated: number;
   dryRuns: number;
   errors: number;
@@ -14,48 +14,48 @@ export interface GuardMetrics {
   leakToDeactivation: { n: number; medianSeconds: number | null; p90Seconds: number | null };
 }
 
+type Group = 'deactivated' | 'dryRuns' | 'errors' | 'skipped';
+
+/** Exhaustive: adding a Decision without choosing its group is a compile error. */
+const GROUP: Record<Decision, Group> = {
+  deactivated: 'deactivated',
+  'dry-run': 'dryRuns',
+  error: 'errors',
+  'ignored-event': 'skipped',
+  'no-secret': 'skipped',
+  'not-an-access-key': 'skipped',
+  'temporary-key': 'skipped',
+  'no-allowlist': 'skipped',
+  'account-not-allowed': 'skipped',
+  'unknown-key': 'skipped',
+  'user-out-of-scope': 'skipped',
+};
+
 /** Counts from the pre-commit log (hash-chained records) and the Lambda audit records. */
-export function computeMetrics(precommit: AuditRecord[], lambda: AuditEntry[]): GuardMetrics {
+export function computeMetrics(precommit: AuditRecord[], lambda: LeakAuditEntry[]): GuardMetrics {
+  const blocks = precommit.filter((r) => r.action === 'precommit-block');
   const blockedByRule: Record<string, number> = {};
-  let blockedPreCommit = 0;
-  for (const r of precommit) {
-    if (r.action !== 'precommit-block') continue;
-    blockedPreCommit++;
-    const rules = r.detail?.['rules'];
-    for (const [rule, count] of Object.entries((rules ?? {}) as Record<string, number>)) {
+  for (const r of blocks) {
+    for (const [rule, count] of Object.entries(
+      (r.detail?.['rules'] ?? {}) as Record<string, number>,
+    )) {
       blockedByRule[rule] = (blockedByRule[rule] ?? 0) + count;
     }
   }
 
-  const seconds: number[] = [];
-  let deactivated = 0;
-  let dryRuns = 0;
-  let errors = 0;
-  let skipped = 0;
-  for (const e of lambda) {
-    if (e.decision === 'deactivated') {
-      deactivated++;
-      if (typeof e.detail.leakToActionSeconds === 'number')
-        seconds.push(e.detail.leakToActionSeconds);
-    } else if (e.decision === 'dry-run') dryRuns++;
-    else if (e.decision === 'error') errors++;
-    else skipped++;
-  }
-  seconds.sort((a, b) => a - b);
-  const med = medianOfSorted(seconds);
-  const p90 = percentileOfSorted(seconds, 90);
+  const counts: Record<Group, number> = { deactivated: 0, dryRuns: 0, errors: 0, skipped: 0 };
+  for (const e of lambda) counts[GROUP[e.decision]]++;
+  const seconds = lambda.flatMap((e) =>
+    e.decision === 'deactivated' && e.detail.leakToActionSeconds !== undefined
+      ? [e.detail.leakToActionSeconds]
+      : [],
+  );
+  const { median, p90 } = summarize(seconds);
   return {
-    blockedPreCommit,
+    blockedPreCommit: blocks.length,
     blockedByRule,
-    deactivated,
-    dryRuns,
-    errors,
-    skipped,
-    leakToDeactivation: {
-      n: seconds.length,
-      medianSeconds: med === null ? null : round1(med),
-      p90Seconds: p90 === null ? null : round1(p90),
-    },
+    ...counts,
+    leakToDeactivation: { n: seconds.length, medianSeconds: median, p90Seconds: p90 },
   };
 }
 

@@ -1,12 +1,15 @@
 import { z } from 'zod';
 
+/** The IAM user path the template and the README use for the demo. Change it for real use. */
+export const DEFAULT_USER_PATH = '/secrets-guard-demo/';
+
 const Env = z.object({
   DRY_RUN: z.string().optional(),
   ALLOWED_ACCOUNT_IDS: z.string().default(''),
   USER_PATH: z
     .string()
     .regex(/^\/([A-Za-z0-9+=,.@_-]+\/)*$/, 'USER_PATH must start and end with /')
-    .default('/secrets-guard-demo/'),
+    .default(DEFAULT_USER_PATH),
 });
 
 export interface GuardConfig {

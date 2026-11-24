@@ -1,11 +1,24 @@
 import { canonicalJson, sha256Hex } from '@adl/shared';
+import type { AlertEvent, KeyId } from './alert.js';
 import { ACTIONABLE, findAccessKeyIds } from './alert.js';
-import type { AlertEvent } from './alert.js';
 import type { GuardConfig } from './config.js';
-import type { AuditEntry, Decision, Ports } from './ports.js';
+import type { Ports } from './ports.js';
+import type { Decision, LeakAuditEntry } from '../types.js';
 
-const ACTOR = 'secrets-guard' as const;
-const ACTION = 'respond-to-leak' as const;
+interface Notice {
+  subject: string;
+  message: string;
+}
+
+/** What happened for one key: the decision, details for the audit record, and a message to send. */
+interface KeyResult {
+  decision: Decision;
+  detail?: Partial<LeakAuditEntry['detail']>;
+  notice?: Notice;
+}
+
+const errorName = (error: unknown): string =>
+  error instanceof Error ? error.name : 'UnknownError';
 
 /**
  * Decide and act on one secret scanning alert. Returns one audit entry per access key found
@@ -18,20 +31,21 @@ export async function respondToAlert(
   ports: Ports,
   config: GuardConfig,
   now: () => Date,
-): Promise<AuditEntry[]> {
+): Promise<LeakAuditEntry[]> {
   const { alert, repository } = event;
   const base = { repo: repository.full_name, alertNumber: alert.number, dryRun: config.dryRun };
-  const entries: AuditEntry[] = [];
+  const entries: LeakAuditEntry[] = [];
 
   const record = async (
     decision: Decision,
-    keyId: string | undefined,
-    extra: Partial<AuditEntry['detail']> = {},
+    keyId?: string,
+    extra: KeyResult['detail'] = {},
+    at: Date = now(),
   ): Promise<void> => {
-    const entry: AuditEntry = {
-      timestamp: now().toISOString(),
-      actor: ACTOR,
-      action: ACTION,
+    const entry: LeakAuditEntry = {
+      timestamp: at.toISOString(),
+      actor: 'secrets-guard',
+      action: 'respond-to-leak',
       inputHash: sha256Hex(
         canonicalJson({ repo: base.repo, alert: alert.number, key: keyId ?? null }),
       ),
@@ -43,72 +57,77 @@ export async function respondToAlert(
   };
 
   if (!ACTIONABLE.has(event.action)) {
-    await record('ignored-event', undefined);
+    await record('ignored-event');
     return entries;
   }
   const secret = alert.secret ?? (await ports.fetchSecret?.(base.repo, alert.number));
   if (!secret) {
-    await record('no-secret', undefined);
+    await record('no-secret');
     return entries;
   }
   const keys = findAccessKeyIds(secret);
   if (keys.length === 0) {
-    await record('not-an-access-key', undefined);
+    await record('not-an-access-key');
     return entries;
   }
 
+  // One STS call per alert, made only when a key needs it.
+  let account: Promise<string> | undefined;
+  const accountId = () => (account ??= ports.accountId());
+
+  const decideKey = async (key: KeyId, at: Date): Promise<KeyResult> => {
+    if (key.kind === 'temporary') return { decision: 'temporary-key' };
+    if (config.allowedAccountIds.length === 0) return { decision: 'no-allowlist' };
+    if (!config.allowedAccountIds.includes(await accountId())) {
+      return { decision: 'account-not-allowed' };
+    }
+    const user = await ports.iam.keyOwner(key.id);
+    if (!user) return { decision: 'unknown-key' };
+    if (!(await ports.iam.userPath(user)).startsWith(config.userPath)) {
+      return { decision: 'user-out-of-scope', detail: { user } };
+    }
+
+    const where = `(repository ${base.repo}, alert ${alert.number})`;
+    const what = `the access key ending ${key.id.slice(-4)} of IAM user ${user}`;
+    if (config.dryRun) {
+      return {
+        decision: 'dry-run',
+        detail: { user },
+        notice: {
+          subject: 'Leaked AWS key: dry run',
+          message: `Would deactivate ${what} ${where}. DRY_RUN is on, so nothing was changed.`,
+        },
+      };
+    }
+    await ports.iam.deactivate(key.id, user);
+    await ports.iam.tagUser(user, {
+      'secrets-guard-deactivated-at': at.toISOString(),
+      'secrets-guard-alert': `${base.repo}#${alert.number}`,
+    });
+    const seconds = alert.created_at
+      ? Math.max(0, Math.round((at.getTime() - Date.parse(alert.created_at)) / 1000))
+      : undefined;
+    return {
+      decision: 'deactivated',
+      detail: { user, ...(seconds === undefined ? {} : { leakToActionSeconds: seconds }) },
+      notice: {
+        subject: 'Leaked AWS key deactivated',
+        message: `${what[0]?.toUpperCase()}${what.slice(1)} was set to Inactive ${where}. It was not deleted. Rotate the credentials and review recent activity.`,
+      },
+    };
+  };
+
   for (const key of keys) {
-    try {
-      if (key.kind === 'temporary') {
-        await record('temporary-key', key.id);
-        continue;
-      }
-      if (config.allowedAccountIds.length === 0) {
-        await record('no-allowlist', key.id);
-        continue;
-      }
-      const account = await ports.accountId();
-      if (!config.allowedAccountIds.includes(account)) {
-        await record('account-not-allowed', key.id);
-        continue;
-      }
-      const user = await ports.iam.keyOwner(key.id);
-      if (!user) {
-        await record('unknown-key', key.id);
-        continue;
-      }
-      if (!(await ports.iam.userPath(user)).startsWith(config.userPath)) {
-        await record('user-out-of-scope', key.id, { user });
-        continue;
-      }
-      if (config.dryRun) {
-        await record('dry-run', key.id, { user });
-        await ports.notify(
-          'Leaked AWS key: dry run',
-          `Would deactivate the access key ending ${key.id.slice(-4)} of IAM user ${user} (repository ${base.repo}, alert ${alert.number}). DRY_RUN is on, so nothing was changed.`,
-        );
-        continue;
-      }
-      await ports.iam.deactivate(key.id, user);
-      await ports.iam.tagUser(user, {
-        'secrets-guard-deactivated-at': now().toISOString(),
-        'secrets-guard-alert': `${base.repo}#${alert.number}`,
-      });
-      const seconds = alert.created_at
-        ? Math.max(0, Math.round((now().getTime() - Date.parse(alert.created_at)) / 1000))
-        : undefined;
-      await record('deactivated', key.id, {
-        user,
-        ...(seconds === undefined ? {} : { leakToActionSeconds: seconds }),
-      });
-      await ports.notify(
-        'Leaked AWS key deactivated',
-        `The access key ending ${key.id.slice(-4)} of IAM user ${user} was set to Inactive (repository ${base.repo}, alert ${alert.number}). It was not deleted. Rotate the credentials and review recent activity.`,
-      );
-    } catch (error) {
-      await record('error', key.id, {
-        error: error instanceof Error ? error.name : 'UnknownError',
-      });
+    const at = now();
+    const result = await decideKey(key, at).catch((error: unknown): KeyResult => ({
+      decision: 'error',
+      detail: { error: errorName(error) },
+    }));
+    await record(result.decision, key.id, result.detail, at);
+    if (result.notice) {
+      await ports
+        .notify(result.notice.subject, result.notice.message)
+        .catch((error: unknown) => record('error', key.id, { error: errorName(error) }, at));
     }
   }
   return entries;

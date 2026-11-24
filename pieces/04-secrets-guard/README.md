@@ -80,14 +80,17 @@ flowchart LR
 | `templates/`                   | Copy-in files: pre-commit config, gitleaks rules, CI workflow.                 |
 | `src/precommit.ts`             | Wraps gitleaks, records blocked commits (no secret values) in `.git/`.         |
 | `src/lambda/`                  | The webhook handler: signature check, alert parsing, decision, AWS adapters.   |
+| `src/types.ts`                 | The decision list and the audit record shape the Lambda writes.                |
 | `template.yaml`                | The SAM template (Function URL, SNS topic, DynamoDB audit table, scoped role). |
 | `src/metrics.ts`               | Blocks pre-commit, and time from alert to deactivation.                        |
 | `demo/`                        | Offline demo: a real pre-commit block, and the handler run against fakes.      |
 
 ### Layer 1: pre-commit
 
-Copy `templates/pre-commit-config.yaml` and `templates/gitleaks.toml` into your repository. The hook
-runs `secrets-guard precommit`, which runs gitleaks on the staged changes with `--redact`, and when
+Build the one-file CLI with `pnpm --filter @adl/secrets-guard build` (it writes
+`dist/secrets-guard.mjs`), copy it to `.githooks/`, and copy `templates/pre-commit-config.yaml` and
+`templates/gitleaks.toml` into your repository. The hook runs `secrets-guard precommit`, which runs
+gitleaks on the staged changes with `--redact`, and when
 it blocks, appends a record (time, rule ids, file count) to `.git/secrets-guard.audit.jsonl`. No
 secret value is ever written. The custom rules in `gitleaks.toml` show how to add an internal token
 format; the starting config extends gitleaks' defaults.
@@ -175,6 +178,11 @@ it by resource, as far as I know; I could not read the AWS authorization referen
 - Raw bodies are verified before they are parsed. The secret is never logged, notified or stored;
   only a SHA-256 of the key id and its last four characters are kept.
 - All tests use fakes. No test calls AWS or GitHub.
+- Lambda audit records go to a DynamoDB table with a conditional put, not into the hash chain the
+  local logs use (see `docs/decisions/0005`). The table is retained when the stack is deleted.
+- A failed Secrets Manager read is not cached, so one throttled call does not break a warm
+  environment. SDK clients are built on first use, so a request rejected at the signature check
+  builds none of them.
 - GitHub details were checked against the current docs on 2026-11-24. The AWS pages (IAM resource
   scoping, Lambda runtimes, Function URL payload, SAM esbuild) could not be read in this session
   because the repository's own agent guardrails block `docs.aws.amazon.com`. Items that depend on

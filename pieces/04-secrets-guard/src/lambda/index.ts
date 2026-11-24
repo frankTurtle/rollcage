@@ -14,32 +14,44 @@ import {
 import { loadGuardConfig } from './config.js';
 import { createHandler } from './handler.js';
 import type { FunctionUrlEvent } from './handler.js';
+import { lazy, remember } from './memo.js';
+import type { Ports } from './ports.js';
 
-/** Lambda entry point: wires the real AWS clients. Not unit tested; it holds no logic. */
+/** Lambda entry point: wires the real AWS clients. Not unit tested; it holds no decisions. */
 const env = process.env;
-const config = loadGuardConfig(env);
-const readSecret = secretReader(new SecretsManagerClient({}));
-let cachedWebhookSecret: Promise<string> | undefined;
-let cachedGithubToken: Promise<string> | undefined;
+
+const secrets = lazy(() => secretReader(new SecretsManagerClient({})));
+const webhookSecret = remember(() => secrets()(env['WEBHOOK_SECRET_ARN'] ?? ''));
+const githubToken = remember(() => secrets()(env['GITHUB_TOKEN_SECRET_ARN'] ?? ''));
+const iam = lazy(() => iamPort(new IAMClient({})));
+const sts = lazy(() => accountIdOf(new STSClient({})));
+const account = remember(() => sts()());
+const sns = lazy(() => notifier(new SNSClient({}), env['TOPIC_ARN'] ?? ''));
+const audit = lazy(() => auditWriter(new DynamoDBClient({}), env['TABLE_NAME'] ?? ''));
+
+const ports: Ports = {
+  iam: {
+    keyOwner: (id) => iam().keyOwner(id),
+    userPath: (user) => iam().userPath(user),
+    deactivate: (id, user) => iam().deactivate(id, user),
+    tagUser: (user, tags) => iam().tagUser(user, tags),
+  },
+  accountId: account,
+  notify: (subject, message) => sns()(subject, message),
+  writeAudit: (entry) => audit()(entry),
+  ...(env['GITHUB_TOKEN_SECRET_ARN']
+    ? {
+        fetchSecret: async (repo: string, alertNumber: number) =>
+          alertSecretFetcher(await githubToken())(repo, alertNumber),
+      }
+    : {}),
+};
 
 const handle = createHandler({
-  config,
+  config: loadGuardConfig(env),
   now: () => new Date(),
-  webhookSecret: () => (cachedWebhookSecret ??= readSecret(env['WEBHOOK_SECRET_ARN'] ?? '')),
-  ports: {
-    iam: iamPort(new IAMClient({})),
-    accountId: accountIdOf(new STSClient({})),
-    notify: notifier(new SNSClient({}), env['TOPIC_ARN'] ?? ''),
-    writeAudit: auditWriter(new DynamoDBClient({}), env['TABLE_NAME'] ?? ''),
-    ...(env['GITHUB_TOKEN_SECRET_ARN']
-      ? {
-          fetchSecret: async (repo: string, alertNumber: number) => {
-            cachedGithubToken ??= readSecret(env['GITHUB_TOKEN_SECRET_ARN'] ?? '');
-            return alertSecretFetcher(await cachedGithubToken)(repo, alertNumber);
-          },
-        }
-      : {}),
-  },
+  webhookSecret,
+  ports,
 });
 
 export const handler = (event: FunctionUrlEvent) => handle(event);

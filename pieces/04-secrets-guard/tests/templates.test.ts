@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_USER_PATH } from '../src/lambda/config.ts';
 
 const root = join(import.meta.dirname, '..');
 const read = (p: string) => readFileSync(join(root, p), 'utf8');
@@ -30,6 +31,10 @@ describe('AC-12 SAM template guardrails', () => {
     expect(block).toContain('iam:TagUser');
     expect(block).toContain('user${UserPath}*');
     expect(template.match(/Resource: '\*'/g)).toHaveLength(1);
+  });
+
+  it('uses the same default user path as the code', () => {
+    expect(template).toContain(`Default: ${DEFAULT_USER_PATH}`);
   });
 
   it('keeps the audit table on stack deletion and limits concurrency', () => {
