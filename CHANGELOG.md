@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Piece 03, DORA metrics: all five DORA metrics from the GitHub API (Deployments API, releases or
+  workflow runs), before/after split, JSON, HTML and CFO summary outputs, synthetic demo history.
+  `shared/ts` gains a YAML config helper and a seeded random helper.
 - Piece 02, agent policy: policy template, Claude Code PreToolUse/PostToolUse hooks (secret reads,
   force-push, writes outside the repo, host allowlist), shell command analyzer, hash-chained audit
   trail, repo check for CI, metrics, offline demo. `shared/ts` gains the glob matcher and a file

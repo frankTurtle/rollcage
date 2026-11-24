@@ -185,6 +185,7 @@ pnpm --filter @adl/agent-policy agent-policy metrics --log .claude/audit/agent.a
 
 Draft for review. The unit tests use payload shapes taken from the docs. In addition, this
 repository's own `.claude/settings.json` ran the hooks during this build, and the live records have
-the documented fields (`session_id`, `tool_use_id`, `tool_name`). The hook's block path was checked
-live only through the permission-rule layer (see Limits), not through an exit-2 block in a running
-agent. The demo replays payloads; it does not drive a real agent.
+the documented fields (`session_id`, `tool_use_id`, `tool_name`). The hook's exit-2 block path was
+then seen live once: during piece 03 a shell command with a variable as its redirect target was
+refused with rule `write-outside-repo`. A `Read` of `.env` was refused by the deny rule instead
+(see Limits). The demo replays payloads; it does not drive a real agent.
