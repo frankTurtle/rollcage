@@ -51,7 +51,7 @@ describe('GitHubApi reads', () => {
       labels: ['x', 'y'],
     });
     expect(headers?.get('authorization')).toBe('Bearer test-token-not-real');
-    expect(headers?.get('x-github-api-version')).toBe('2022-11-28');
+    expect(headers?.get('x-github-api-version')).toBe('2026-03-10');
   });
 
   it('requests the diff media type', async () => {

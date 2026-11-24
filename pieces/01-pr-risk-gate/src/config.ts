@@ -1,4 +1,4 @@
-import { parse } from 'yaml';
+import { parseYamlConfig } from '@adl/shared';
 import { z } from 'zod';
 
 const Category = z.object({
@@ -94,6 +94,5 @@ export type GateConfig = z.infer<typeof ConfigSchema>;
 
 /** Parse risk-gate.yml text. Empty or missing text yields the defaults. Unknown keys are errors. */
 export function loadConfig(yamlText?: string): GateConfig {
-  const raw: unknown = yamlText?.trim() ? parse(yamlText) : {};
-  return ConfigSchema.parse(raw ?? {});
+  return parseYamlConfig(ConfigSchema, yamlText);
 }

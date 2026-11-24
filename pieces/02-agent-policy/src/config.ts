@@ -1,4 +1,4 @@
-import { parse } from 'yaml';
+import { parseYamlConfig } from '@adl/shared';
 import { z } from 'zod';
 
 const DEFAULT_SECRET_PATHS = [
@@ -61,5 +61,5 @@ export type PolicyConfig = z.infer<typeof ConfigSchema>;
 
 /** Parse agent-policy.yml text. Empty text gives the defaults; unknown keys are errors. */
 export function loadPolicyConfig(yamlText?: string): PolicyConfig {
-  return ConfigSchema.parse(parse(yamlText ?? '') ?? {});
+  return parseYamlConfig(ConfigSchema, yamlText);
 }

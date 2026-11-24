@@ -7,3 +7,5 @@ export * from './structured.js';
 export * from './audit.js';
 export * from './glob.js';
 export * from './lock.js';
+export * from './yaml-config.js';
+export * from './random.js';
