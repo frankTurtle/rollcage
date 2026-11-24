@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Piece 02, agent policy: policy template, Claude Code PreToolUse/PostToolUse hooks (secret reads,
+  force-push, writes outside the repo, host allowlist), shell command analyzer, hash-chained audit
+  trail, repo check for CI, metrics, offline demo. `shared/ts` gains the glob matcher and a file
+  lock; `AuditLogger` now appends under that lock and reads only the log tail.
 - Piece 01, PR risk gate: deterministic pre-score, schema-validated model review with citation
   checks, test and approval policy, in-place PR comment, hash-chained audit log, metrics command,
   GitHub Action, Claude Code skill, offline demo.

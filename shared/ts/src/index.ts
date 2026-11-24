@@ -5,3 +5,5 @@ export * from './replay.js';
 export * from './anthropic.js';
 export * from './structured.js';
 export * from './audit.js';
+export * from './glob.js';
+export * from './lock.js';

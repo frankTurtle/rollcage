@@ -3,7 +3,7 @@
 Working code, tests and CI for making AI-assisted software delivery safe to ship, and for
 measuring whether it is paying off.
 
-> Status: Phase 0 (skeleton) is done. Piece 01 is built and in review. The rest are planned.
+> Status: Phase 0 (skeleton) is done. Pieces 01 and 02 are built (02 in review). The rest are planned.
 
 ## For engineering leaders
 
@@ -18,8 +18,8 @@ CI, and each has a demo script.
 
 | # | Piece | Problem | What it proves | Metric | Status | Video |
 |---|-------|---------|----------------|--------|--------|-------|
-| 01 | [pr-risk-gate](pieces/01-pr-risk-gate/README.md) | Risky AI-assisted changes merge without extra scrutiny | High-risk PRs without tests are blocked, with cited reasons | Change failure rate; % high-risk PRs shipped with tests | MVP, in review | TBD |
-| 02 | agent-policy | Engineers already use coding agents with no written rules | A one-page policy backed by enforced guardrails and an audit trail | Blocked risky actions per week; % sessions with complete audit trail | MVP, planned | TBD |
+| 01 | [pr-risk-gate](pieces/01-pr-risk-gate/README.md) | Risky AI-assisted changes merge without extra scrutiny | High-risk PRs without tests are blocked, with cited reasons | Change failure rate; % high-risk PRs shipped with tests | MVP, done | TBD |
+| 02 | [agent-policy](pieces/02-agent-policy/README.md) | Engineers already use coding agents with no written rules | A one-page policy backed by enforced guardrails and an audit trail | Blocked risky actions per week; % sessions with complete audit trail | MVP, in review | TBD |
 | 03 | dora-metrics | No proof AI is paying off | Delivery metrics before and after an AI rollout date | DORA metrics | MVP, planned | TBD |
 | 04 | secrets-guard | A leaked cloud key can be abused within hours | Three layers: pre-commit, CI scan, automatic key deactivation | Leaks blocked pre-commit; time from leak to deactivation | MVP, planned | TBD |
 | 05 | sbom-vuln-triage | Hundreds of CVEs, few that matter | Evidence-based prioritization | Open criticals; mean time to remediate | backlog | TBD |
@@ -69,6 +69,9 @@ Compliance mappings in this repo are illustrative mappings, not compliance attes
 
 ## What is built
 
+- `pieces/02-agent-policy`: a one-page AI coding agent policy, Claude Code hooks that block
+  secret reads, force-pushes, writes outside the repo and unlisted hosts, an audit log, a CI check
+  and metrics.
 - `pieces/01-pr-risk-gate`: PR risk scoring, cited model review, test and approval rules, one
   updating PR comment, audit log, GitHub Action and Claude Code skill.
 
