@@ -16,7 +16,9 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
     "coverage": "pnpm -r --if-present coverage",
-    "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm coverage"
+    "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm coverage",
+    "demo:01": "pnpm --filter @adl/pr-risk-gate demo",
+    "demo:01:reset": "pnpm --filter @adl/pr-risk-gate demo:reset"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

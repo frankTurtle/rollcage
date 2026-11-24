@@ -1,0 +1,21 @@
+{
+  "name": "@adl/pr-risk-gate",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "risk-gate": "tsx src/bin.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "demo": "bash demo/demo.sh",
+    "demo:reset": "rm -rf demo/out",
+    "demo:record": "tsx demo/record-fixtures.ts"
+  },
+  "dependencies": {
+    "@adl/shared": "workspace:*",
+    "tsx": "^4.23.15",
+    "yaml": "^2.6.0",
+    "zod": "^3.23.0"
+  }
+}

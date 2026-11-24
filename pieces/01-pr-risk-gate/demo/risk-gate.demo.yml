@@ -1,0 +1,9 @@
+# Demo config: smaller size thresholds so the small fixture PRs exercise the size rules.
+mode: enforce
+thresholds:
+  medium_diff_lines: 20
+  large_diff_lines: 200
+  min_test_ratio: 0.25
+second_approval:
+  mode: reviews
+  required: 2

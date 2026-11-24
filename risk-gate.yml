@@ -1,0 +1,4 @@
+# Config for this repository's own PR risk gate (dogfooding).
+# observe mode: this repo has one maintainer, so a two-approval rule would block every PR.
+# Switch to enforce once there are two reviewers.
+mode: observe

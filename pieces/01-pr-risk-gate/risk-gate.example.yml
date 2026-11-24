@@ -1,0 +1,19 @@
+# Example config. Every key is optional; omitted keys use the defaults in src/config.ts.
+# Start in observe mode, tune the paths, then switch to enforce.
+mode: observe
+
+# risk_paths replaces the whole default map when set. Copy a default category to keep it.
+# risk_paths:
+#   payments:
+#     level: high
+#     paths: ["src/payments/**", "**/billing/**"]
+
+thresholds:
+  medium_diff_lines: 100
+  large_diff_lines: 400
+  min_test_ratio: 0.25
+
+second_approval:
+  mode: reviews # or: label
+  required: 2
+  label: second-approval

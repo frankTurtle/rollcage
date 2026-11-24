@@ -2,7 +2,13 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { AuditLogger, sha256Hex, canonicalJson, verifyAuditChain } from '../src/index.js';
+import {
+  AuditLogger,
+  canonicalJson,
+  readAuditRecords,
+  sha256Hex,
+  verifyAuditChain,
+} from '../src/index.js';
 
 const fixedNow = () => new Date('2026-01-02T03:04:05.000Z');
 const tmpLog = () => join(mkdtempSync(join(tmpdir(), 'adl-audit-')), 'nested', 'a.audit.jsonl');
@@ -72,6 +78,14 @@ describe('AuditLogger', () => {
     new AuditLogger(path, fixedNow).append({ actor: 'a', action: 'x', input: 1, decision: 'ok' });
     writeFileSync(path, 'garbage\n');
     expect(verifyAuditChain(path)).toMatchObject({ ok: false, brokenAt: 1 });
+  });
+
+  it('reads records back in order', () => {
+    const path = tmpLog();
+    const log = new AuditLogger(path, fixedNow);
+    log.append({ actor: 'a', action: 'x', input: 1, decision: 'one' });
+    log.append({ actor: 'a', action: 'y', input: 2, decision: 'two' });
+    expect(readAuditRecords(path).map((r) => r.decision)).toEqual(['one', 'two']);
   });
 
   it('uses the real clock by default', () => {

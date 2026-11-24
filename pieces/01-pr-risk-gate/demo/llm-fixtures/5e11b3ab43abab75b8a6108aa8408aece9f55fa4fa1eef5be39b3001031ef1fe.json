@@ -1,0 +1,4 @@
+{
+  "text": "{\"risk_level\":\"medium\",\"reasons\":[{\"file\":\"src/cart/discount.ts\",\"line\":14,\"text\":\"Discount rules are hard-coded and the percent is not bounded; a bad rule could produce a negative total.\"}],\"required_checks\":[\"Add a test for a rule with a percent above 100.\"],\"assumptions\":[\"Assumed RULES is only edited by developers, not loaded from user input.\"]}",
+  "model": "fake-model"
+}

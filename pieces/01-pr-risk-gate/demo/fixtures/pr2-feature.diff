@@ -1,0 +1,59 @@
+diff --git a/src/cart/discount.ts b/src/cart/discount.ts
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/src/cart/discount.ts
+@@ -0,0 +1,24 @@
++import type { Cart } from './types';
++
++export interface DiscountRule {
++  code: string;
++  percent: number;
++  minSubtotal: number;
++}
++
++const RULES: DiscountRule[] = [
++  { code: 'WELCOME10', percent: 10, minSubtotal: 0 },
++  { code: 'BULK20', percent: 20, minSubtotal: 200 },
++];
++
++export function applyDiscount(cart: Cart, code: string): number {
++  const rule = RULES.find((r) => r.code === code);
++  if (!rule) return cart.subtotal;
++  if (cart.subtotal < rule.minSubtotal) return cart.subtotal;
++  const discounted = cart.subtotal * (1 - rule.percent / 100);
++  return Math.round(discounted * 100) / 100;
++}
++
++export function listCodes(): string[] {
++  return RULES.map((r) => r.code);
++}
+diff --git a/tests/cart/discount.test.ts b/tests/cart/discount.test.ts
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/tests/cart/discount.test.ts
+@@ -0,0 +1,14 @@
++import { describe, expect, it } from 'vitest';
++import { applyDiscount } from '../../src/cart/discount';
++
++describe('applyDiscount', () => {
++  it('applies a percentage', () => {
++    expect(applyDiscount({ subtotal: 100 }, 'WELCOME10')).toBe(90);
++  });
++  it('ignores unknown codes', () => {
++    expect(applyDiscount({ subtotal: 100 }, 'NOPE')).toBe(100);
++  });
++  it('respects the minimum subtotal', () => {
++    expect(applyDiscount({ subtotal: 50 }, 'BULK20')).toBe(50);
++  });
++});
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+index 1111111..2222222 100644
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -40,3 +40,3 @@
+   lodash:
+-    version: 4.17.20
++    version: 4.17.21
+     resolution: {integrity: sha512-PLACEHOLDER}

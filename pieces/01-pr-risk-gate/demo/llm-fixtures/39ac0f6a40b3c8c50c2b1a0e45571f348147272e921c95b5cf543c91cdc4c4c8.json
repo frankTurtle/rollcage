@@ -1,0 +1,4 @@
+{
+  "text": "{\"risk_level\":\"high\",\"reasons\":[{\"file\":\"src/auth/session.ts\",\"line\":19,\"text\":\"Token is decoded but its signature is no longer verified, so a forged token with a future expiry would be accepted.\"},{\"file\":\"src/auth/session.ts\",\"line\":16,\"text\":\"Sessions are cached by raw token and served until the token expiry, so revoking a session has no effect until it expires.\"}],\"required_checks\":[\"Add a test that a token with an invalid signature is rejected.\",\"Add a test that an expired token is rejected.\"],\"assumptions\":[\"Assumed the removed verifyToken call was the only signature check on this path.\",\"Exploitability is not confirmed; this is a reading of the diff, not a test.\"]}",
+  "model": "fake-model"
+}
