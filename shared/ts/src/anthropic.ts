@@ -1,7 +1,6 @@
 import { resolveModel } from './config.js';
+import type { FetchLike } from './fetch.js';
 import type { LlmClient, LlmRequest, LlmResponse } from './llm.js';
-
-export type FetchLike = (url: string, init: RequestInit) => Promise<Response>;
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const API_VERSION = '2023-06-01';

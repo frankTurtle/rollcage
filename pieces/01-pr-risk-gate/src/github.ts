@@ -1,3 +1,5 @@
+import { GitHubHttp } from '@adl/shared';
+import type { FetchLike } from '@adl/shared';
 import { COMMENT_MARKER } from './comment.js';
 import type { GateIO, PrContext, PrMeta } from './types.js';
 
@@ -6,8 +8,6 @@ export interface PrRef {
   repo: string;
   number: number;
 }
-
-export type FetchLike = (url: string, init: RequestInit) => Promise<Response>;
 
 interface Review {
   state: string;
@@ -19,55 +19,23 @@ interface Review {
  * It has no method to approve, merge, or push, so the gate cannot do those things.
  */
 export class GitHubApi {
-  constructor(
-    private readonly token: string,
-    private readonly fetchImpl: FetchLike = fetch,
-    private readonly baseUrl = 'https://api.github.com',
-  ) {}
+  private readonly http: GitHubHttp;
 
-  private async request(
-    method: string,
-    path: string,
-    opts: { accept?: string; body?: unknown } = {},
-  ): Promise<Response> {
-    const res = await this.fetchImpl(`${this.baseUrl}${path}`, {
-      method,
-      headers: {
-        authorization: `Bearer ${this.token}`,
-        accept: opts.accept ?? 'application/vnd.github+json',
-        'x-github-api-version': '2026-03-10',
-        ...(opts.body ? { 'content-type': 'application/json' } : {}),
-      },
-      ...(opts.body ? { body: JSON.stringify(opts.body) } : {}),
-    });
-    if (!res.ok) {
-      // Status only. Response bodies are not echoed.
-      throw new Error(
-        `GitHub API ${method} ${path.split('?')[0]} failed with status ${res.status}`,
-      );
-    }
-    return res;
+  constructor(token: string, fetchImpl?: FetchLike, baseUrl?: string) {
+    this.http = new GitHubHttp(token, fetchImpl, baseUrl);
   }
 
-  private async paginate<T>(path: string): Promise<T[]> {
-    const all: T[] = [];
-    for (let page = 1; page <= 10; page++) {
-      const res = await this.request('GET', `${path}?per_page=100&page=${page}`);
-      const items = (await res.json()) as T[];
-      all.push(...items);
-      if (items.length < 100) break;
-    }
-    return all;
+  private listAll<T>(path: string): Promise<T[]> {
+    return this.http.paginate<T[], T>(path, {}, (b) => b, { maxPages: 10 });
   }
 
   async getPull(ref: PrRef): Promise<PrMeta> {
-    const res = await this.request('GET', `/repos/${ref.owner}/${ref.repo}/pulls/${ref.number}`);
-    const pr = (await res.json()) as {
+    const pr = await this.http.json<{
       number: number;
       title: string;
       user: { login: string };
       labels: { name: string }[];
-    };
+    }>(`/repos/${ref.owner}/${ref.repo}/pulls/${ref.number}`);
     return {
       number: pr.number,
       title: pr.title,
@@ -77,15 +45,19 @@ export class GitHubApi {
   }
 
   async getDiff(ref: PrRef): Promise<string> {
-    const res = await this.request('GET', `/repos/${ref.owner}/${ref.repo}/pulls/${ref.number}`, {
-      accept: 'application/vnd.github.diff',
-    });
+    const res = await this.http.request(
+      'GET',
+      `/repos/${ref.owner}/${ref.repo}/pulls/${ref.number}`,
+      {
+        accept: 'application/vnd.github.diff',
+      },
+    );
     return res.text();
   }
 
   /** Logins whose most recent approving or rejecting review is an approval. Bots are excluded. */
   async getApprovers(ref: PrRef): Promise<string[]> {
-    const reviews = await this.paginate<Review>(
+    const reviews = await this.listAll<Review>(
       `/repos/${ref.owner}/${ref.repo}/pulls/${ref.number}/reviews`,
     );
     const latest = new Map<string, string>();
@@ -100,15 +72,15 @@ export class GitHubApi {
   /** Create the gate's comment, or update it in place if one with the marker already exists. */
   async upsertComment(ref: PrRef, body: string): Promise<'created' | 'updated'> {
     const base = `/repos/${ref.owner}/${ref.repo}/issues`;
-    const comments = await this.paginate<{ id: number; body?: string }>(
+    const comments = await this.listAll<{ id: number; body?: string }>(
       `${base}/${ref.number}/comments`,
     );
     const existing = comments.find((c) => c.body?.includes(COMMENT_MARKER));
     if (existing) {
-      await this.request('PATCH', `${base}/comments/${existing.id}`, { body: { body } });
+      await this.http.request('PATCH', `${base}/comments/${existing.id}`, { body: { body } });
       return 'updated';
     }
-    await this.request('POST', `${base}/${ref.number}/comments`, { body: { body } });
+    await this.http.request('POST', `${base}/${ref.number}/comments`, { body: { body } });
     return 'created';
   }
 }

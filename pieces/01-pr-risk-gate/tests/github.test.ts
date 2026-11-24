@@ -1,3 +1,4 @@
+import { GITHUB_API_VERSION } from '@adl/shared';
 import { describe, expect, it } from 'vitest';
 import { COMMENT_MARKER } from '../src/comment.ts';
 import { GitHubApi, GitHubIO } from '../src/github.ts';
@@ -51,7 +52,7 @@ describe('GitHubApi reads', () => {
       labels: ['x', 'y'],
     });
     expect(headers?.get('authorization')).toBe('Bearer test-token-not-real');
-    expect(headers?.get('x-github-api-version')).toBe('2026-03-10');
+    expect(headers?.get('x-github-api-version')).toBe(GITHUB_API_VERSION);
   });
 
   it('requests the diff media type', async () => {

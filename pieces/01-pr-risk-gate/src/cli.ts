@@ -1,9 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { AuditLogger, readAuditRecords } from '@adl/shared';
+import type { FetchLike } from '@adl/shared';
 import { loadConfig } from './config.js';
 import { GitHubApi, GitHubIO } from './github.js';
-import type { FetchLike, PrRef } from './github.js';
+import type { PrRef } from './github.js';
 import { parseLlmMode, selectLlm } from './llm-select.js';
 import { LocalIO } from './local-io.js';
 import { computeMetrics, formatMetrics } from './metrics.js';
