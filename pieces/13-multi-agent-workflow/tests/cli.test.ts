@@ -49,6 +49,23 @@ describe('cli', () => {
     expect(metrics.out.join('\n')).toContain('100%');
   });
 
+  it('refuses to approve or commit a run that proposed no change', async () => {
+    const dir = tmp();
+    await runCli(['run', '--task', 'greet', '--replies', REPLIES, ...RUN(dir)], io().io);
+    const record = join(dir, 'run-demo-clean.json');
+    const parsed = JSON.parse(readFileSync(record, 'utf8')) as Record<string, unknown>;
+    delete parsed.change;
+    (await import('node:fs')).writeFileSync(record, JSON.stringify(parsed));
+    for (const args of [
+      ['approve', record, '--by', 'alice'],
+      ['commit', record],
+    ]) {
+      const r = io();
+      expect(await runCli(args, r.io)).toBe(2);
+      expect(r.err.join('\n')).toContain('proposed no change');
+    }
+  });
+
   it('fails replay with exit 1 when the record was edited', async () => {
     const dir = tmp();
     await runCli(['run', '--task', 'greet', '--replies', REPLIES, ...RUN(dir)], io().io);
