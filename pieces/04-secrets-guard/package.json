@@ -1,0 +1,29 @@
+{
+  "name": "@adl/secrets-guard",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "secrets-guard": "tsx src/bin.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "validate": "sam validate --lint --template-file template.yaml",
+    "demo": "bash demo/demo.sh",
+    "demo:reset": "rm -rf demo/out",
+    "build": "node scripts/build.mjs"
+  },
+  "dependencies": {
+    "@adl/shared": "workspace:*",
+    "tsx": "^4.23.15",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1177.0",
+    "@aws-sdk/client-iam": "^3.1177.0",
+    "@aws-sdk/client-secrets-manager": "^3.1177.0",
+    "@aws-sdk/client-sns": "^3.1177.0",
+    "@aws-sdk/client-sts": "^3.1177.0",
+    "esbuild": "^0.28.2"
+  }
+}

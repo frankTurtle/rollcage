@@ -1,0 +1,24 @@
+title = "secrets-guard gitleaks config"
+
+[extend]
+useDefault = true
+
+# Example of a custom rule for an internal token format. Replace the regex with your own.
+[[rules]]
+id = "internal-api-token"
+description = "Internal API token (example format acme_ followed by 32 hex characters)"
+regex = '''\bacme_[a-f0-9]{32}\b'''
+keywords = ["acme_"]
+
+# Second example: a cloud key assigned in a shell or env style line, with a named variable.
+[[rules]]
+id = "aws-secret-key-assignment"
+description = "AWS secret access key assigned to a named variable"
+regex = '''(?i)aws_secret_access_key\s*[=:]\s*['"]?[A-Za-z0-9/+=]{40}['"]?'''
+keywords = ["aws_secret_access_key"]
+
+# Allowlist only what you must, and as narrowly as you can. AWS's documented example keys are
+# already ignored by the default rules.
+# [[allowlists]]
+# description = "Test fixtures"
+# paths = ['''tests/fixtures/.*''']

@@ -1,5 +1,5 @@
 import type { Metrics, Row } from './schema.js';
-import { round1 } from './stats.js';
+import { round1 } from '@adl/shared';
 
 /** Changes smaller than this (relative, percent) are reported as "same". */
 export const SAME_THRESHOLD_PCT = 5;

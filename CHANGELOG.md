@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Piece 04, secrets guard: gitleaks pre-commit wrapper with block records, CI scan template, SAM app
+  (webhook signature check, scoped deactivation, dry-run default, audit table) and an offline demo.
+  Not deployed; AWS documentation pages could not be read in this session. `shared/ts` gains
+  median/percentile helpers.
 - Piece 03, DORA metrics: all five DORA metrics from the GitHub API (Deployments API, releases or
   workflow runs), before/after split, JSON, HTML and CFO summary outputs, synthetic demo history.
   `shared/ts` gains a YAML config helper, a seeded random helper and a GitHub REST transport (auth,

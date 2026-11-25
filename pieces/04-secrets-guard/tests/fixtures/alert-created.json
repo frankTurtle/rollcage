@@ -1,0 +1,11 @@
+{
+  "action": "created",
+  "alert": {
+    "number": 7,
+    "created_at": "2026-02-01T10:00:00Z",
+    "secret_type": "aws_access_key_id",
+    "secret": "AKIAIOSFODNN7EXAMPLE",
+    "html_url": "https://github.com/example-org/example-repo/security/secret-scanning/7"
+  },
+  "repository": { "full_name": "example-org/example-repo" }
+}

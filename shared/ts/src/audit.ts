@@ -103,12 +103,12 @@ function lastLine(path: string): string | undefined {
   }
 }
 
-/** Read every record from an audit log. Throws on a line that is not JSON. */
-export function readAuditRecords(path: string): AuditRecord[] {
+/** Read every record from a JSONL log. Throws on a line that is not JSON. `T` is the record shape. */
+export function readAuditRecords<T = AuditRecord>(path: string): T[] {
   return readFileSync(path, 'utf8')
     .split('\n')
     .filter(Boolean)
-    .map((line) => JSON.parse(line) as AuditRecord);
+    .map((line) => JSON.parse(line) as T);
 }
 
 export interface ChainCheck {

@@ -3,7 +3,7 @@
 Working code, tests and CI for making AI-assisted software delivery safe to ship, and for
 measuring whether it is paying off.
 
-> Status: Phase 0 (skeleton) is done. Pieces 01 to 03 are done. The rest are planned.
+> Status: Phase 0 (skeleton) is done. Pieces 01 to 03 are done; 04 is in review. The rest are planned.
 
 ## For engineering leaders
 
@@ -21,7 +21,7 @@ CI, and each has a demo script.
 | 01 | [pr-risk-gate](pieces/01-pr-risk-gate/README.md) | Risky AI-assisted changes merge without extra scrutiny | High-risk PRs without tests are blocked, with cited reasons | Change failure rate; % high-risk PRs shipped with tests | MVP, done | TBD |
 | 02 | [agent-policy](pieces/02-agent-policy/README.md) | Engineers already use coding agents with no written rules | A one-page policy backed by enforced guardrails and an audit trail | Blocked risky actions per week; % sessions with complete audit trail | MVP, done | TBD |
 | 03 | [dora-metrics](pieces/03-dora-metrics/README.md) | No proof AI is paying off | Delivery metrics before and after an AI rollout date | The five DORA metrics | MVP, done | TBD |
-| 04 | secrets-guard | A leaked cloud key can be abused within hours | Three layers: pre-commit, CI scan, automatic key deactivation | Leaks blocked pre-commit; time from leak to deactivation | MVP, planned | TBD |
+| 04 | [secrets-guard](pieces/04-secrets-guard/README.md) | A leaked cloud key can be abused within hours | Three layers: pre-commit, CI scan, automatic key deactivation | Leaks blocked pre-commit; time from leak to deactivation | MVP, in review | TBD |
 | 05 | sbom-vuln-triage | Hundreds of CVEs, few that matter | Evidence-based prioritization | Open criticals; mean time to remediate | backlog | TBD |
 | 06 | policy-gates | Compliance issues found after deployment | Policy as code in the pipeline | Violations caught pre-merge vs after deploy | backlog | TBD |
 | 07 | ci-failure-triage | Teams cannot tell code failures from pipeline failures | Classified failures and flaky-test quarantine proposals | Time to green; flaky-test rate | backlog | TBD |
@@ -69,6 +69,9 @@ Compliance mappings in this repo are illustrative mappings, not compliance attes
 
 ## What is built
 
+- `pieces/04-secrets-guard`: three secret-leak layers: a gitleaks pre-commit wrapper that records
+  blocks, a CI scan template, and a SAM app that verifies a GitHub secret scanning webhook and
+  deactivates (never deletes) a leaked AWS key. Dry run by default; not deployed.
 - `pieces/03-dora-metrics`: the five DORA metrics from the GitHub API, a before and after split
   around an AI rollout date, a JSON report, a single-file HTML dashboard and a CFO summary.
 - `pieces/02-agent-policy`: a one-page AI coding agent policy, Claude Code hooks that block

@@ -1,0 +1,144 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Deactivates (never deletes) AWS access keys that GitHub secret scanning reports as leaked.
+  Dry run by default. Acts only in allowlisted accounts, on IAM users under one path.
+
+Parameters:
+  AllowedAccountIds:
+    Type: CommaDelimitedList
+    Description: Account ids the function may act in. No default on purpose; choose it deliberately.
+  UserPath:
+    Type: String
+    Default: /secrets-guard-demo/
+    AllowedPattern: '^/([A-Za-z0-9+=,.@_-]+/)*$'
+    Description: Only IAM users whose path starts with this are touched.
+  DryRun:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: When true, nothing is changed in IAM.
+  NotifyEmail:
+    Type: String
+    Default: ''
+    Description: Optional address for notifications. Leave empty to skip the subscription.
+  GitHubTokenSecretArn:
+    Type: String
+    Default: ''
+    Description: Optional Secrets Manager secret holding a GitHub token that can read secret scanning alerts.
+
+Conditions:
+  HasEmail: !Not [!Equals [!Ref NotifyEmail, '']]
+  HasGitHubToken: !Not [!Equals [!Ref GitHubTokenSecretArn, '']]
+
+Resources:
+  WebhookSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: Shared secret for the GitHub webhook. Paste it into the webhook settings.
+      GenerateSecretString:
+        PasswordLength: 48
+        ExcludePunctuation: true
+
+  AuditTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+
+  AlertTopic:
+    Type: AWS::SNS::Topic
+
+  AlertEmail:
+    Type: AWS::SNS::Subscription
+    Condition: HasEmail
+    Properties:
+      TopicArn: !Ref AlertTopic
+      Protocol: email
+      Endpoint: !Ref NotifyEmail
+
+  GuardLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 90
+
+  GuardFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        EntryPoints:
+          - src/lambda/index.ts
+        External:
+          - '@aws-sdk/*'
+    Properties:
+      CodeUri: .
+      Handler: index.handler
+      Runtime: nodejs22.x
+      Architectures: [arm64]
+      MemorySize: 256
+      Timeout: 30
+      ReservedConcurrentExecutions: 2
+      LoggingConfig:
+        LogGroup: !Ref GuardLogs
+      FunctionUrlConfig:
+        AuthType: NONE
+      Environment:
+        Variables:
+          DRY_RUN: !Ref DryRun
+          ALLOWED_ACCOUNT_IDS: !Join [',', !Ref AllowedAccountIds]
+          USER_PATH: !Ref UserPath
+          WEBHOOK_SECRET_ARN: !Ref WebhookSecret
+          GITHUB_TOKEN_SECRET_ARN: !Ref GitHubTokenSecretArn
+          TOPIC_ARN: !Ref AlertTopic
+          TABLE_NAME: !Ref AuditTable
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            # IAM does not scope this action by resource, as far as we know. Verify before deploying.
+            - Effect: Allow
+              Action: iam:GetAccessKeyLastUsed
+              Resource: '*'
+            # Deactivate and tag only users under the guarded path. There is no delete permission.
+            - Effect: Allow
+              Action:
+                - iam:GetUser
+                - iam:UpdateAccessKey
+                - iam:TagUser
+              Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:user${UserPath}*'
+            - Effect: Allow
+              Action: sns:Publish
+              Resource: !Ref AlertTopic
+            - Effect: Allow
+              Action: dynamodb:PutItem
+              Resource: !GetAtt AuditTable.Arn
+            - Effect: Allow
+              Action: secretsmanager:GetSecretValue
+              Resource:
+                - !Ref WebhookSecret
+                - !If [HasGitHubToken, !Ref GitHubTokenSecretArn, !Ref 'AWS::NoValue']
+
+Outputs:
+  WebhookUrl:
+    Description: Payload URL for the GitHub webhook (event type "Secret scanning alerts").
+    Value: !GetAtt GuardFunctionUrl.FunctionUrl
+  WebhookSecretArn:
+    Description: Where the generated webhook secret is stored.
+    Value: !Ref WebhookSecret
+  AuditTableName:
+    Value: !Ref AuditTable
+  TopicArn:
+    Value: !Ref AlertTopic

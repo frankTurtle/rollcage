@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { loadDoraConfig } from '../src/config.ts';
 import { computeMetrics } from '../src/metrics.ts';
-import { median, percentile } from '../src/stats.ts';
 import { cfg, change, deploy, empty, range, sample } from './helpers.ts';
 
 const period = range('2026-01-01', '2026-01-15'); // 14 days = 2 weeks
@@ -201,18 +200,6 @@ describe('AC-4 minimum samples', () => {
     });
     expect(m.changeFailRate.rate).toBeNull();
     expect(m.failedDeploymentRecovery.medianHours).toBeNull();
-  });
-});
-
-describe('stats', () => {
-  it('median and nearest-rank percentile', () => {
-    expect(median([])).toBeNull();
-    expect(median([5])).toBe(5);
-    expect(median([4, 1, 3, 2])).toBe(2.5);
-    expect(percentile([], 90)).toBeNull();
-    expect(percentile([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 90)).toBe(9);
-    expect(percentile([7], 90)).toBe(7);
-    expect(percentile([3, 1, 2], 0)).toBe(1);
   });
 });
 

@@ -11,3 +11,5 @@ export * from './lock.js';
 export * from './yaml-config.js';
 export * from './random.js';
 export * from './github-http.js';
+export * from './stats.js';
+export * from './demo.js';
