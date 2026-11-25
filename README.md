@@ -41,12 +41,14 @@ pnpm install
 pnpm check        # lint, format check, typecheck, tests with coverage
 ```
 
-Requires Node 24 or newer and pnpm. Per-piece demos run offline from recorded responses by
-default. Piece 01 is ready now:
+Requires Node 24 or newer and pnpm. The demos run offline and are deterministic:
 
 ```bash
-pnpm demo:01        # three PRs, before and after the gate (about 10 seconds)
-pnpm demo:01:reset  # restore the before state
+pnpm demo:01   # PR risk gate: three PRs, before and after the gate
+pnpm demo:02   # agent policy: blocked tool calls and the audit trail
+pnpm demo:03   # DORA metrics: five numbers before and after a (synthetic) rollout
+pnpm demo:04   # secrets guard: pre-commit block and the webhook handler (needs gitleaks)
+pnpm demo:0N:reset   # restore the before state for another take
 ```
 
 ## How to adopt
