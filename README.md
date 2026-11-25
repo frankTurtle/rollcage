@@ -37,6 +37,22 @@ CI and a demo script.
 | 13 | [multi-agent-workflow](pieces/13-multi-agent-workflow/README.md) | Agent changes are hard to review | Every handoff logged and replayable | % agent changes with a complete trace | done | TBD |
 | 14 | [ai-dev-tool-eval](pieces/14-ai-dev-tool-eval/README.md) | No consistent way to compare AI dev tools | Rubric and pilot plan tied to measured results | Weighted score; pilot before/after | done | TBD |
 
+## Add it to your repository
+
+One command, from the root of your git repository (Node 24+ and pnpm needed). It adds new files
+only, never overwrites, never commits or pushes, and pins the workflows to the exact commit it
+fetched. Preview first with `--dry-run`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/frankTurtle/rollcage/v0.3.0/install.sh | bash -s -- --dry-run
+curl -fsSL https://raw.githubusercontent.com/frankTurtle/rollcage/v0.3.0/install.sh | bash
+```
+
+Prefer to read it first: download `install.sh`, then `bash install.sh`. To have an AI coding agent
+do it, give it this URL and ask it to follow it:
+[docs/agent-setup.md](docs/agent-setup.md). Details and options:
+[piece 12](pieces/12-golden-path-template/README.md#add-to-an-existing-repository).
+
 ## Quickstart
 
 ```bash

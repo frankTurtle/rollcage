@@ -82,6 +82,31 @@ pnpm --filter @adl/golden-path-template scaffold ~/code/payments-api \
   --name payments-api --owner my-org --ref v0.3.0
 ```
 
+### Add to an existing repository
+
+`scaffold init [dir]` adds the guardrails to a repository you already have, instead of generating a
+new one. From the repository root, `curl ... install.sh | bash` (see the root README) fetches
+rollcage, runs `init` and cleans up; from a clone of this repo,
+`pnpm --filter @adl/golden-path-template scaffold init ~/code/my-repo --ref <sha>`.
+
+It writes `.github/workflows/rollcage.yml` (the caller), one `rollcage-*.yml` per piece, and
+`risk-gate.yml`. Pieces: `risk-gate`, `secrets`, `sbom`, `policy` (default) and `provenance`
+(opt-in, because it verifies a build artifact). `--extras --owner <login>` adds CODEOWNERS,
+Dependabot, SECURITY.md and a PR template. Rules:
+
+- It never overwrites. A file that exists is skipped and listed.
+- `--dry-run` lists what would be written and writes nothing.
+- Nothing is rendered to disk until the pin check passes: rollcage pieces must use `--ref`, and
+  every other action must be pinned to a commit SHA. A tag in `--ref` produces a warning, so the
+  installer pins to the SHA it fetched.
+- It prints the check names to require in branch protection after the first pull request. It does
+  not change any setting.
+- The risk-gate workflow here omits the pnpm setup step the template project uses, so a repository
+  with no pnpm version still works.
+
+Verified by hand on 2026-11-25 against a fresh git repository, from `install.sh` with a local
+source. The workflows have not yet run on GitHub from a repository set up this way.
+
 Commands:
 
 | Command                                             | What it does                                                                         |
