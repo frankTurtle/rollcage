@@ -4,6 +4,7 @@ import type { IAMClient } from '@aws-sdk/client-iam';
 import {
   GetAccessKeyLastUsedCommand,
   GetUserCommand,
+  ListAccessKeysCommand,
   TagUserCommand,
   UpdateAccessKeyCommand,
 } from '@aws-sdk/client-iam';
@@ -35,6 +36,10 @@ export function iamPort(client: IAMClient): IamPort {
     async userPath(userName) {
       const out = await client.send(new GetUserCommand({ UserName: userName }));
       return out.User?.Path ?? '/';
+    },
+    async keyIsActive(accessKeyId, userName) {
+      const out = await client.send(new ListAccessKeysCommand({ UserName: userName }));
+      return out.AccessKeyMetadata?.find((k) => k.AccessKeyId === accessKeyId)?.Status === 'Active';
     },
     async deactivate(accessKeyId, userName) {
       await client.send(

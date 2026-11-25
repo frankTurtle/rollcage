@@ -152,6 +152,19 @@ describe('AC-2 and AC-3 the handler gate', () => {
     expect((await handler(request(body))).statusCode).toBe(500);
   });
 
+  it('returns 200 (no retry) when only the notification failed, and 500 when the secret fetch failed', async () => {
+    const notify = setup({ failOn: 'notify' });
+    expect((await notify.handler(request(body))).statusCode).toBe(200);
+    const fetchFail = setup({
+      fetchSecret: async () => {
+        throw new Error('x');
+      },
+    });
+    const noSecret = JSON.stringify({ ...JSON.parse(body), alert: { number: 7 } });
+    expect((await fetchFail.handler(request(noSecret))).statusCode).toBe(500);
+    expect(fetchFail.calls.audit.map((e) => e.decision)).toEqual(['error']);
+  });
+
   it('handles a request with no body', async () => {
     const { handler } = setup();
     expect((await handler({ headers: {} })).statusCode).toBe(401);

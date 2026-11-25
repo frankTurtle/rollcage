@@ -7,8 +7,10 @@ export type Decision =
   | 'account-not-allowed'
   | 'unknown-key'
   | 'user-out-of-scope'
+  | 'already-inactive'
   | 'dry-run'
   | 'deactivated'
+  | 'notify-failed'
   | 'error';
 
 /**

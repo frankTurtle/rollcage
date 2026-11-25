@@ -29,6 +29,7 @@ export function fakePorts(
     account?: string;
     fetchSecret?: Ports['fetchSecret'];
     failOn?: 'deactivate' | 'tag' | 'audit' | 'iam' | 'notify';
+    active?: boolean;
   } = {},
 ) {
   const calls: Calls = { deactivated: [], tagged: [], notified: [], audit: [] };
@@ -44,6 +45,9 @@ export function fakePorts(
       },
       async userPath() {
         return over.path ?? DEFAULT_USER_PATH;
+      },
+      async keyIsActive() {
+        return over.active ?? true;
       },
       async deactivate(id, user) {
         boom('deactivate');

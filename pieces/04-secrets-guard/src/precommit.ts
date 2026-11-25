@@ -1,6 +1,9 @@
 import { AuditLogger } from '@adl/shared';
 import { z } from 'zod';
 
+/** The exit code we ask gitleaks to use when it finds leaks (its own failures stay at 1). */
+const LEAKS_FOUND = 99;
+
 const Report = z.array(z.object({ RuleID: z.string(), File: z.string() }));
 
 export interface PrecommitDeps {
@@ -33,6 +36,9 @@ function scan(deps: PrecommitDeps): 0 | 1 | 2 {
     '--pre-commit',
     '--staged',
     '--redact',
+    // gitleaks exits 1 for both "leaks found" and "failed to run". A separate code tells them apart.
+    '--exit-code',
+    String(LEAKS_FOUND),
     '--verbose',
     '--no-banner',
     '--report-format',
@@ -49,7 +55,7 @@ function scan(deps: PrecommitDeps): 0 | 1 | 2 {
     return 2;
   }
   if (result.status === 0) return 0;
-  if (result.status !== 1) {
+  if (result.status !== LEAKS_FOUND) {
     deps.err(`secrets-guard: gitleaks exited with status ${result.status}.`);
     return 2;
   }

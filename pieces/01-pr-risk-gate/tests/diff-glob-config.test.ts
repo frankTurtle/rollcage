@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { loadConfig } from '../src/config.ts';
-import { parseDiff } from '../src/diff.ts';
+import { parseDiff, unquotePath } from '../src/diff.ts';
+import { prescore } from '../src/prescore.ts';
 import { maxLevel } from '../src/types.ts';
 import { fixture } from './helpers.ts';
 
@@ -97,5 +98,49 @@ describe('config', () => {
     expect(maxLevel('low', 'high')).toBe('high');
     expect(maxLevel('medium', 'low')).toBe('medium');
     expect(maxLevel('high', 'high')).toBe('high');
+  });
+});
+
+describe('review fix: quoted and unreadable paths', () => {
+  const quoted = (path: string, body = ' x\n+y\n') =>
+    `diff --git "a/${path}" "b/${path}"\nindex 1..2 100644\n--- "a/${path}"\n+++ "b/${path}"\n@@ -1,1 +1,2 @@\n${body}`;
+
+  it('decodes git-quoted paths with octal UTF-8 bytes and escapes', () => {
+    const [f] = parseDiff(quoted('src/auth/caf\\303\\251.ts'));
+    expect(f?.path).toBe('src/auth/café.ts');
+    expect(f?.addedLines).toEqual([2]);
+    expect(parseDiff(quoted('a\\tb\\"c\\\\d.ts'))[0]?.path).toBe('a\tb"c\\d.ts');
+    expect(unquotePath('plain/path.ts')).toBe('plain/path.ts');
+    expect(unquotePath('"x\\q"')).toBe('xq');
+    expect(unquotePath('"')).toBe('"');
+  });
+
+  it('a quoted rename keeps both paths', () => {
+    const d = 'diff --git "a/old caf\\303\\251.ts" "b/new caf\\303\\251.ts"\nrename from x\n';
+    expect(parseDiff(d)[0]).toMatchObject({
+      oldPath: 'old café.ts',
+      path: 'new café.ts',
+      status: 'renamed',
+    });
+  });
+
+  it('falls back to the +++ line when the header cannot be read', () => {
+    const d =
+      'diff --git weird header\n--- a/src/auth/x.ts\n+++ b/src/auth/x.ts\n@@ -1 +1,2 @@\n x\n+y\n';
+    expect(parseDiff(d)[0]?.path).toBe('src/auth/x.ts');
+    const deleted = 'diff --git weird\n+++ /dev/null\n';
+    expect(parseDiff(deleted)[0]?.path).toBe('');
+  });
+
+  it('a file under an auth directory with a non-ASCII name is high risk', () => {
+    const p = prescore(parseDiff(quoted('src/auth/caf\\303\\251.ts')), loadConfig());
+    expect(p.level).toBe('high');
+    expect(p.categories['auth']).toEqual(['src/auth/café.ts']);
+  });
+
+  it('a file whose path cannot be read at all is high risk (fail closed)', () => {
+    const p = prescore(parseDiff('diff --git ???\n@@ -1 +1,2 @@\n x\n+y\n'), loadConfig());
+    expect(p.level).toBe('high');
+    expect(p.categories['unreadable_path']).toBeDefined();
   });
 });

@@ -116,6 +116,7 @@ Resources:
             - Effect: Allow
               Action:
                 - iam:GetUser
+                - iam:ListAccessKeys
                 - iam:UpdateAccessKey
                 - iam:TagUser
               Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:user${UserPath}*'

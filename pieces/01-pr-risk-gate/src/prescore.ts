@@ -23,6 +23,12 @@ export function prescore(files: DiffFile[], config: GateConfig): PreScore {
 
   for (const file of files) {
     const changed = file.added + file.removed;
+    if (file.path === '') {
+      // A file we cannot name could be anything, including a risky one. Fail closed.
+      (categories['unreadable_path'] ??= []).push('(path could not be read)');
+      categoryPoints = Math.max(categoryPoints, CATEGORY_POINTS.high);
+      continue;
+    }
     if (matchesAny(file.path, config.test_paths)) {
       testLines += changed;
     } else if (matchesAny(file.path, config.doc_paths)) {

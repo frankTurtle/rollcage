@@ -82,7 +82,11 @@ Claude Code docs on 2026-11-24 ([hooks](https://code.claude.com/docs/en/hooks),
 - Hooks live in `.claude/settings.json` as `hooks.<Event>[].{matcher, hooks[].{type, command, timeout}}`.
 - A hook receives JSON on stdin with `tool_name`, `tool_input`, `cwd`, `session_id`, `tool_use_id`.
 - Exit code 2 blocks the call and sends stderr to the model. Exit code 1 is not a block, so the hook
-  exits 2 on every error (fail closed).
+  exits 2 on every error it can catch. A hook that cannot start at all (missing file, missing
+  runtime) exits with another code, which would let the call run, so the PreToolUse entry also sets
+  `"onFailure": "block"` (a handler field in the hooks docs, from Claude Code 2.1.295; check your
+  version). `check` fails without it. The cost: if the hook is broken, every tool call is blocked
+  until you fix or remove the hook entry in `.claude/settings.json`.
 - Exit 2 blocks even in `bypassPermissions` mode. A `PostToolUse` hook does not fire for a blocked
   call, so the blocking hook writes its own audit record.
 

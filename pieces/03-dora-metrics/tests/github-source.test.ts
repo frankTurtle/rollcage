@@ -227,6 +227,72 @@ describe('AC-6 changes and incidents', () => {
   });
 });
 
+describe('review fixes: paging and large lists', () => {
+  const day = (n: number) => `2026-01-${String(n).padStart(2, '0')}T10:00:00Z`;
+  const old = Array.from({ length: 100 }, (_, i) => ({
+    id: i + 1,
+    sha: 's',
+    created_at: '2025-11-01T10:00:00Z',
+  }));
+
+  it('keeps paging when the first page is old but the list is not newest-first', async () => {
+    const inRange = [{ id: 500, sha: 's', created_at: day(5) }];
+    const fetchImpl = async (url: string) => {
+      const u = new URL(url);
+      if (u.pathname.endsWith('/statuses')) {
+        return new Response(JSON.stringify([{ state: 'success', created_at: day(5) }]));
+      }
+      const page = u.searchParams.get('page');
+      // Ascending order: old items come first. Descending would put them last.
+      const body = u.pathname.endsWith('/deployments')
+        ? page === '1'
+          ? ascending(old)
+          : inRange
+        : [];
+      return new Response(JSON.stringify(body));
+    };
+    const ascending = (items: typeof old) =>
+      items.map((d, i) => ({
+        ...d,
+        created_at: `2025-11-${String((i % 28) + 1).padStart(2, '0')}T10:00:00Z`,
+      }));
+    const gh = new GitHubSource({ owner: 'o', name: 'r' }, 't', loadDoraConfig(''), fetchImpl);
+    const { data } = await gh.load(span);
+    expect(data.deployments.map((d) => d.id)).toEqual(['500']);
+  });
+
+  it('stops early on a newest-first list whose page is entirely old', async () => {
+    let pages = 0;
+    const fetchImpl = async (url: string) => {
+      const u = new URL(url);
+      if (u.pathname.endsWith('/deployments')) pages++;
+      return new Response(JSON.stringify(u.pathname.endsWith('/deployments') ? old : []));
+    };
+    const gh = new GitHubSource({ owner: 'o', name: 'r' }, 't', loadDoraConfig(''), fetchImpl);
+    await gh.load(span);
+    expect(pages).toBe(1);
+  });
+
+  it('handles a very large list of deployments without spreading it into a call', async () => {
+    const many = Array.from({ length: 120_000 }, (_, i) => ({
+      id: String(i),
+      sha: 's',
+      at: '2026-01-05T10:00:00Z',
+      status: 'success' as const,
+    }));
+    const src = new GitHubSource(
+      { owner: 'o', name: 'r' },
+      't',
+      loadDoraConfig('deployments:\n  source: releases\n'),
+      async () => new Response('[]'),
+    );
+    // The reduce runs inside load(); exercise it through the public method with a stubbed deployment list.
+    const spy = src as unknown as { loadDeployments: () => Promise<typeof many> };
+    spy.loadDeployments = async () => many;
+    await expect(src.load(span)).resolves.toBeDefined();
+  });
+});
+
 describe('AC-6 concurrency', () => {
   it('never has more than five status requests in flight', async () => {
     const many = Array.from({ length: 12 }, (_, i) => ({

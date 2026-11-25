@@ -124,13 +124,16 @@ const denyOutside = (abs: string): Decision =>
 const withValuePart = (t: string): string[] =>
   t.includes('=') ? [t, t.slice(t.indexOf('=') + 1)] : [t];
 
+/** `~name/...`: another user's home directory, which this guard cannot resolve. */
+const OTHER_USER_HOME = /^~[^/]/;
+
 const SAFE_SINKS = new Set(['/dev/null', '/dev/stdout', '/dev/stderr']);
 
 function checkWritePath(token: string, cwd: string, ctx: GuardContext): Decision {
-  if (token.includes('$')) {
+  if (token.includes('$') || OTHER_USER_HOME.test(token)) {
     return deny(
       'write-outside-repo',
-      'The target path uses a variable or substitution, so it cannot be checked. Use a literal path inside the repository.',
+      "The target path uses a variable, substitution or another user's home, so it cannot be checked. Use a literal path inside the repository.",
     );
   }
   const abs = resolvePath(token, cwd, ctx.home);
@@ -175,7 +178,17 @@ const WRAPPERS = new Set([
   'setsid',
   'xargs',
 ]);
-const WRAPPER_VALUE_OPTS = new Set(['-u', '-g', '-U', '-C', '-h', '-p']);
+/** Options that take a value, per wrapper. The value must be skipped or it looks like the command. */
+const WRAPPER_VALUE_OPTS: Record<string, Set<string>> = {
+  sudo: new Set(['-u', '-g', '-U', '-C', '-h', '-p', '-r', '-t', '-D']),
+  doas: new Set(['-u', '-C']),
+  env: new Set(['-u', '-C', '-S']),
+  timeout: new Set(['-s', '-k', '--signal', '--kill-after']),
+  nice: new Set(['-n', '--adjustment']),
+  ionice: new Set(['-c', '-n', '-p', '-t']),
+  xargs: new Set(['-I', '-n', '-P', '-L', '-s', '-d', '-E', '-a', '--arg-file', '--delimiter']),
+};
+const NO_VALUE_OPTS = new Set<string>();
 const SHELLS = new Set(['sh', 'bash', 'zsh', 'dash', 'ksh']);
 const OUTPUT_OPS = new Set(['>', '>>', '>|', '&>', '&>>']);
 const NO_ARG_SECRET_CHECK = new Set([
@@ -199,11 +212,17 @@ export function commandOf(words: string[]): { cmd: string; args: string[] } {
       k++;
     } else if (WRAPPERS.has(basename(w))) {
       const wrapper = basename(w);
+      const valueOpts = WRAPPER_VALUE_OPTS[wrapper] ?? NO_VALUE_OPTS;
       k++;
       while (k < words.length) {
         const a = words[k] ?? '';
-        if (WRAPPER_VALUE_OPTS.has(a) || (a === '-n' && /^(nice|ionice)$/.test(wrapper))) k += 2;
-        else if (a.startsWith('-') || /^[0-9.]+[smhd]?$/.test(a) || ASSIGNMENT.test(a)) k++;
+        if (a === '--') {
+          k++;
+          break;
+        }
+        if (valueOpts.has(a)) k += 2;
+        else if (a.startsWith('-') || ASSIGNMENT.test(a)) k++;
+        else if (wrapper === 'timeout' && /^[0-9.]+[smhd]?$/.test(a)) k++;
         else break;
       }
     } else {
@@ -257,6 +276,18 @@ function checkSegment(
       if (!inner.allow) return inner;
     }
   }
+  for (const words of findExecCommands(cmd, args)) {
+    const inner = commandOf(words);
+    const decision = checkSegment(
+      { words, redirects: [] },
+      inner.cmd,
+      inner.args,
+      cwd,
+      ctx,
+      depth + 1,
+    );
+    if (!decision.allow) return decision;
+  }
   const checks = [
     () => checkGitPush(cmd, args),
     () => checkSecretArgs(cmd, args, cwd, ctx),
@@ -268,6 +299,18 @@ function checkSegment(
     if (!decision.allow) return decision;
   }
   return ALLOW;
+}
+
+/** The commands that `find -exec`, `-execdir`, `-ok` and `-okdir` would run, up to `;` or `+`. */
+function findExecCommands(cmd: string, args: string[]): string[][] {
+  if (cmd !== 'find') return [];
+  const found: string[][] = [];
+  for (let i = 0; i < args.length; i++) {
+    if (!['-exec', '-execdir', '-ok', '-okdir'].includes(args[i] ?? '')) continue;
+    const end = args.findIndex((a, j) => j > i && (a === ';' || a === '+'));
+    found.push(args.slice(i + 1, end === -1 ? args.length : end));
+  }
+  return found.filter((w) => w.length > 0);
 }
 
 /** The script string for `sh -c "..."` or `eval ...`, if this is one. */
@@ -285,7 +328,10 @@ function checkSecretToken(token: string, cwd: string, ctx: GuardContext): Decisi
     if (wildcardHitsSecret(c, ctx)) {
       return deny('secret-read', 'This pattern would read secret files.', c);
     }
-    const abs = resolvePath(c, cwd, ctx.home);
+    // For `~name/x` match the secret patterns against the part after the user's home.
+    const abs = OTHER_USER_HOME.test(c)
+      ? `/x${c.replace(/^~[^/]*/, '')}`
+      : resolvePath(c, cwd, ctx.home);
     if (isSecretPath(abs, ctx)) return denySecret(abs);
   }
   return ALLOW;

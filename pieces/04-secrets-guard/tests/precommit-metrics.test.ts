@@ -61,10 +61,14 @@ describe('AC-10 pre-commit wrapper', () => {
       ]),
     );
     expect(args).toContain('--report-path');
+    expect(args.slice(args.indexOf('--exit-code'), args.indexOf('--exit-code') + 2)).toEqual([
+      '--exit-code',
+      '99',
+    ]);
   });
 
   it('blocks and records rule ids and files, never values', () => {
-    const { d, auditPath, errors } = deps({ status: 1, report: REPORT });
+    const { d, auditPath, errors } = deps({ status: 99, report: REPORT });
     expect(runPrecommit(d)).toBe(1);
     const [rec] = readAuditRecords(auditPath);
     expect(rec).toMatchObject({
@@ -84,14 +88,14 @@ describe('AC-10 pre-commit wrapper', () => {
 
   it('still blocks when the report is missing or unreadable', () => {
     for (const report of [undefined, 'not json', '{"a":1}']) {
-      const { d, auditPath } = deps({ status: 1, ...(report === undefined ? {} : { report }) });
+      const { d, auditPath } = deps({ status: 99, ...(report === undefined ? {} : { report }) });
       expect(runPrecommit(d)).toBe(1);
       expect(readAuditRecords(auditPath)[0]?.detail).toMatchObject({ rules: {}, fileCount: 0 });
     }
   });
 
   it('still blocks when the audit file cannot be written', () => {
-    const { d, errors } = deps({ status: 1, report: REPORT });
+    const { d, errors } = deps({ status: 99, report: REPORT });
     d.auditPath = '/dev/null/x/audit.jsonl';
     expect(runPrecommit(d)).toBe(1);
     expect(errors.join(' ')).toContain('could not write the audit record');
@@ -101,9 +105,10 @@ describe('AC-10 pre-commit wrapper', () => {
     const missing = deps({ status: null });
     expect(runPrecommit(missing.d)).toBe(2);
     expect(missing.errors.join(' ')).toContain('Install it');
-    const odd = deps({ status: 126 });
+    const odd = deps({ status: 1 });
     expect(runPrecommit(odd.d)).toBe(2);
-    expect(odd.errors.join(' ')).toContain('status 126');
+    expect(odd.errors.join(' ')).toContain('status 1');
+    expect(() => readFileSync(odd.auditPath)).toThrow(); // a gitleaks failure is not a leak
   });
 });
 
@@ -125,7 +130,7 @@ describe('AC-11 metrics', () => {
   it('counts blocks by rule and summarizes alert-to-deactivation time', () => {
     const dir = tmp();
     const log = join(dir, 'a.jsonl');
-    const { d } = deps({ status: 1, report: REPORT });
+    const { d } = deps({ status: 99, report: REPORT });
     d.auditPath = log;
     runPrecommit(d);
     runPrecommit(d);

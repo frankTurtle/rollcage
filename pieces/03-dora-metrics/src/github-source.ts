@@ -57,6 +57,13 @@ const RUN_OUTCOME: Record<string, Deployment['status']> = {
   timed_out: 'failure',
 };
 
+/** True if the page's timestamps never increase from one item to the next. */
+const isNewestFirst = (items: { created_at: string }[]): boolean =>
+  items.every(
+    (d, i) =>
+      i === 0 || ms(d.created_at) <= ms((items[i - 1] as { created_at: string }).created_at),
+  );
+
 /** Map items through `fn` with at most `size` calls in flight, keeping the input order. */
 async function mapPool<T, R>(items: T[], size: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const out = new Array<R>(items.length);
@@ -106,9 +113,9 @@ export class GitHubSource implements Source {
     const deployments = await this.loadDeployments(range, warnings);
     // A PR merged after the last successful deployment has no lead time yet (it is "undeployed"),
     // so its commits are not fetched. It is still listed: a revert or hotfix there is a signal.
-    const lastDeployed = Math.max(
+    const lastDeployed = deployments.reduce(
+      (latest, d) => (d.status === 'success' ? Math.max(latest, ms(d.at)) : latest),
       -Infinity,
-      ...deployments.filter((d) => d.status === 'success').map((d) => ms(d.at)),
     );
     const [changes, incidents] = await Promise.all([
       this.loadChanges(range, lastDeployed),
@@ -168,7 +175,12 @@ export class GitHubSource implements Source {
       this.path('/deployments'),
       { environment: this.config.deployments.environment },
       (b) => b,
-      { stop: (items) => items.every((d) => ms(d.created_at) < range.since.getTime()) },
+      {
+        // Stop early only when the list is visibly newest-first. GitHub does not document the
+        // order, so an ascending page must not end the paging.
+        stop: (items) =>
+          isNewestFirst(items) && items.every((d) => ms(d.created_at) < range.since.getTime()),
+      },
     );
     const wanted = list.filter((d) => inRange(ms(d.created_at), range));
     const results = await mapPool(wanted, CONCURRENCY, async (d): Promise<Deployment | null> => {

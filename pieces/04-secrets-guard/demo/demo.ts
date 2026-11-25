@@ -131,6 +131,7 @@ async function layer3(): Promise<void> {
     iam: {
       keyOwner: async (id) => USERS[id]?.name ?? null,
       userPath: async (name) => Object.values(USERS).find((u) => u.name === name)?.path ?? '/',
+      keyIsActive: async () => true,
       deactivate: async (id, user) =>
         void changes.push(`UpdateAccessKey Inactive: ${user} (${mask(id)})`),
       tagUser: async (user) => void changes.push(`TagUser: ${user}`),

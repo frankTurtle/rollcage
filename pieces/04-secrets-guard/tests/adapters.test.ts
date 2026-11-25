@@ -66,6 +66,22 @@ describe('iamPort', () => {
     expect(await iamPort(fakeClient<IAMClient>(() => ({})).client).userPath('u')).toBe('/');
   });
 
+  it("reads whether a key is active from the user's key list", async () => {
+    const keys = [
+      { AccessKeyId: 'AKIA1', Status: 'Active' },
+      { AccessKeyId: 'AKIA2', Status: 'Inactive' },
+    ];
+    const { client, sent } = fakeClient<IAMClient>(() => ({ AccessKeyMetadata: keys }));
+    const port = iamPort(client);
+    expect(await port.keyIsActive('AKIA1', 'alice')).toBe(true);
+    expect(await port.keyIsActive('AKIA2', 'alice')).toBe(false);
+    expect(await port.keyIsActive('AKIA3', 'alice')).toBe(false);
+    expect(sent[0]).toEqual({ name: 'ListAccessKeysCommand', input: { UserName: 'alice' } });
+    expect(await iamPort(fakeClient<IAMClient>(() => ({})).client).keyIsActive('AKIA1', 'a')).toBe(
+      false,
+    );
+  });
+
   it('deactivates by setting Inactive, never by deleting, and tags the user', async () => {
     const { client, sent } = fakeClient<IAMClient>();
     const port = iamPort(client);

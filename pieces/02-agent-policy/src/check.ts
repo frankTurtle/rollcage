@@ -14,13 +14,19 @@ export interface CheckOptions {
 }
 
 interface HookGroup {
-  hooks?: { command?: unknown }[];
+  hooks?: { command?: unknown; onFailure?: unknown }[];
 }
 
-const hasHook = (groups: unknown, marker: string): boolean =>
+/** True if a hook for this tool runs `marker` and (when `blocking`) is set to block if it fails. */
+const hasHook = (groups: unknown, marker: string, blocking = false): boolean =>
   Array.isArray(groups) &&
   (groups as HookGroup[]).some((g) =>
-    g.hooks?.some((h) => typeof h.command === 'string' && h.command.includes(marker)),
+    g.hooks?.some(
+      (h) =>
+        typeof h.command === 'string' &&
+        h.command.includes(marker) &&
+        (!blocking || h.onFailure === 'block'),
+    ),
   );
 
 /** Verify a repository has the policy file and the Claude Code guardrail settings. */
@@ -55,6 +61,12 @@ export function checkRepo(root: string, opts: CheckOptions = {}): Finding[] {
 
   if (!hasHook(settings.hooks?.['PreToolUse'], marker)) {
     findings.push({ id: 'hook-pre-missing', message: `No PreToolUse hook runs ${marker}.` });
+  } else if (!hasHook(settings.hooks?.['PreToolUse'], marker, true)) {
+    // Without onFailure "block", a missing or crashing hook is a non-blocking error and the call runs.
+    findings.push({
+      id: 'hook-pre-not-blocking',
+      message: `The PreToolUse hook for ${marker} must set "onFailure": "block", or a crash lets calls through.`,
+    });
   }
   if (!hasHook(settings.hooks?.['PostToolUse'], marker)) {
     findings.push({ id: 'hook-post-missing', message: `No PostToolUse hook runs ${marker}.` });

@@ -13,11 +13,15 @@ import { computeMetrics, formatMetrics, isoWeek } from '../src/metrics.ts';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
-const hookGroup = (command: string) => [{ matcher: '*', hooks: [{ type: 'command', command }] }];
+const hookGroup = (command: string, extra: Record<string, unknown> = {}) => [
+  { matcher: '*', hooks: [{ type: 'command', command, ...extra }] },
+];
 const goodSettings = () => ({
   permissions: { deny: ['Read(./.env)', 'Bash(git push --force *)'] },
   hooks: {
-    PreToolUse: hookGroup('node .claude/hooks/agent-policy-hook.mjs hook pre'),
+    PreToolUse: hookGroup('node .claude/hooks/agent-policy-hook.mjs hook pre', {
+      onFailure: 'block',
+    }),
     PostToolUse: hookGroup('node .claude/hooks/agent-policy-hook.mjs hook post'),
   },
 });
@@ -68,6 +72,25 @@ describe('AC-9 checkRepo', () => {
     };
     expect(ids(repo(other))).toEqual(['hook-pre-missing', 'hook-post-missing']);
     expect(ids(repo({ ...goodSettings(), disableAllHooks: true }))).toEqual(['hooks-disabled']);
+  });
+
+  it('fails when the PreToolUse hook does not block on failure', () => {
+    const lax = {
+      ...goodSettings(),
+      hooks: {
+        ...goodSettings().hooks,
+        PreToolUse: hookGroup('node agent-policy-hook.mjs hook pre'),
+      },
+    };
+    expect(ids(repo(lax))).toEqual(['hook-pre-not-blocking']);
+    const wrong = {
+      ...goodSettings(),
+      hooks: {
+        ...goodSettings().hooks,
+        PreToolUse: hookGroup('node agent-policy-hook.mjs hook pre', { onFailure: 'continue' }),
+      },
+    };
+    expect(ids(repo(wrong))).toEqual(['hook-pre-not-blocking']);
   });
 
   it('fails when the deny rules are missing', () => {

@@ -60,7 +60,16 @@ export async function respondToAlert(
     await record('ignored-event');
     return entries;
   }
-  const secret = alert.secret ?? (await ports.fetchSecret?.(base.repo, alert.number));
+  let secret = alert.secret;
+  if (!secret && ports.fetchSecret) {
+    try {
+      secret = await ports.fetchSecret(base.repo, alert.number);
+    } catch (error) {
+      // Still leave a record, so an alert we could not read is not invisible.
+      await record('error', undefined, { error: errorName(error) });
+      return entries;
+    }
+  }
   if (!secret) {
     await record('no-secret');
     return entries;
@@ -85,6 +94,10 @@ export async function respondToAlert(
     if (!user) return { decision: 'unknown-key' };
     if (!(await ports.iam.userPath(user)).startsWith(config.userPath)) {
       return { decision: 'user-out-of-scope', detail: { user } };
+    }
+
+    if (!(await ports.iam.keyIsActive(key.id, user))) {
+      return { decision: 'already-inactive', detail: { user } };
     }
 
     const where = `(repository ${base.repo}, alert ${alert.number})`;
@@ -125,9 +138,12 @@ export async function respondToAlert(
     }));
     await record(result.decision, key.id, result.detail, at);
     if (result.notice) {
+      // The key is already handled and recorded. A notification failure must not trigger a retry.
       await ports
         .notify(result.notice.subject, result.notice.message)
-        .catch((error: unknown) => record('error', key.id, { error: errorName(error) }, at));
+        .catch((error: unknown) =>
+          record('notify-failed', key.id, { error: errorName(error) }, at),
+        );
     }
   }
   return entries;

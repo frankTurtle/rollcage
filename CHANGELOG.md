@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- MVP review fixes: guard sees through wrappers with option values (`xargs -I`, `timeout -s`) and
+  `find -exec`, and no longer trusts `~user` paths; the risk gate reads git-quoted (non-ASCII) paths
+  and fails closed on unreadable ones; the policy check requires `onFailure: block` on the
+  PreToolUse hook; secrets guard distinguishes gitleaks failures from leaks, records retries as
+  `already-inactive`, treats notification failures as non-fatal, and audits unreadable alerts; DORA
+  deployment paging no longer assumes an undocumented order; the duplicate CI secrets scan is gone.
+
 - Piece 04, secrets guard: gitleaks pre-commit wrapper with block records, CI scan template, SAM app
   (webhook signature check, scoped deactivation, dry-run default, audit table) and an offline demo.
   Not deployed; AWS documentation pages could not be read in this session. `shared/ts` gains

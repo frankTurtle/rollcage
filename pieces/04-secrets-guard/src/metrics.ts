@@ -29,6 +29,8 @@ const GROUP: Record<Decision, Group> = {
   'account-not-allowed': 'skipped',
   'unknown-key': 'skipped',
   'user-out-of-scope': 'skipped',
+  'already-inactive': 'skipped',
+  'notify-failed': 'errors',
 };
 
 /** Counts from the pre-commit log (hash-chained records) and the Lambda audit records. */

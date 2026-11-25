@@ -90,7 +90,8 @@ flowchart LR
 Build the one-file CLI with `pnpm --filter @adl/secrets-guard build` (it writes
 `dist/secrets-guard.mjs`), copy it to `.githooks/`, and copy `templates/pre-commit-config.yaml` and
 `templates/gitleaks.toml` into your repository. The hook runs `secrets-guard precommit`, which runs
-gitleaks on the staged changes with `--redact`, and when
+gitleaks (asking it to exit 99 on leaks, so a gitleaks failure such as a broken config is not
+mistaken for a leak) on the staged changes with `--redact`, and when
 it blocks, appends a record (time, rule ids, file count) to `.git/secrets-guard.audit.jsonl`. No
 secret value is ever written. The custom rules in `gitleaks.toml` show how to add an internal token
 format; the starting config extends gitleaks' defaults.
@@ -125,12 +126,13 @@ Behavior, in order:
 5. Confirm the running account is in `ALLOWED_ACCOUNT_IDS`. If not, refuse (this guards against the
    stack being deployed to the wrong account).
 6. Find the key's owner (`GetAccessKeyLastUsed`) and the user's path (`GetUser`). A user outside
-   `USER_PATH` is skipped.
+   `USER_PATH` is skipped. A key that is already `Inactive` (for example on a GitHub retry) is
+   recorded as `already-inactive` and left alone.
 7. Dry-run (default): audit "would deactivate" and notify. Otherwise `UpdateAccessKey` to
    `Inactive`, `TagUser`, notify, audit with `leakToActionSeconds`.
 
-The role has no `DeleteAccessKey`. `UpdateAccessKey`, `GetUser` and `TagUser` are limited to the
-guarded user path. `GetAccessKeyLastUsed` is granted on all resources because IAM does not scope
+The role has no `DeleteAccessKey`. `UpdateAccessKey`, `GetUser`, `ListAccessKeys` and `TagUser` are
+limited to the guarded user path. `GetAccessKeyLastUsed` is granted on all resources because IAM does not scope
 it by resource, as far as I know; I could not read the AWS authorization reference to confirm.
 
 ### Config (environment of the function)
@@ -157,7 +159,9 @@ it by resource, as far as I know; I could not read the AWS authorization referen
   not touched, and each outcome is audited with a distinct decision.
 - AC-7: a missing allowlist refuses to act at all.
 - AC-8: the secret value is never written to the audit record, the notification or the logs.
-- AC-9: an AWS error is audited and returns 500, so GitHub can retry; deactivation is idempotent.
+- AC-9: an AWS error is audited and returns 500, so GitHub can retry; a retry finds the key already
+  inactive and records that instead of a second deactivation; a failed notification is recorded as
+  `notify-failed` and does not cause a retry; an unreadable alert still leaves an audit record.
 - AC-10: the pre-commit wrapper records a blocked commit without any secret value, and passes a
   clean commit.
 - AC-11: metrics report blocks by rule and leak-to-deactivation median and p90.

@@ -33,6 +33,7 @@ const ports: Ports = {
   iam: {
     keyOwner: (id) => iam().keyOwner(id),
     userPath: (user) => iam().userPath(user),
+    keyIsActive: (id, user) => iam().keyIsActive(id, user),
     deactivate: (id, user) => iam().deactivate(id, user),
     tagUser: (user, tags) => iam().tagUser(user, tags),
   },

@@ -28,6 +28,7 @@ describe('AC-12 SAM template guardrails', () => {
   it('scopes the key-changing actions to the guarded user path', () => {
     const block = template.slice(template.indexOf('iam:GetUser'), template.indexOf('sns:Publish'));
     expect(block).toContain('iam:UpdateAccessKey');
+    expect(block).toContain('iam:ListAccessKeys');
     expect(block).toContain('iam:TagUser');
     expect(block).toContain('user${UserPath}*');
     expect(template.match(/Resource: '\*'/g)).toHaveLength(1);
