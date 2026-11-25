@@ -5,9 +5,10 @@ out anyway: a pre-commit scan, a CI scan, and an AWS SAM app that deactivates a 
 
 ## For engineering leaders
 
-**The problem.** A cloud key committed to a repository can be found and used by automated scanners
-within minutes, and the bill or the breach follows (see [docs/sources.md](../../docs/sources.md);
-the cited reports are flagged VERIFY). One layer is not enough: developers bypass hooks, CI runs
+**The problem.** A cloud key committed to a repository can be found and abused by automated scanners, and the
+bill or the breach follows. Reports of how fast and how costly are listed in
+[docs/sources.md](../../docs/sources.md); they could not be read in this session, so this README
+quotes no figure. One layer is not enough: developers bypass hooks, CI runs
 after the push, and nobody is watching at 2 a.m.
 
 **What this proves.**
@@ -39,9 +40,11 @@ you.
 **Limits.**
 
 - GitHub itself notifies AWS when it finds an AWS key in a public repository (AWS is a secret
-  scanning partner), and AWS may restrict the key. Layer 3 is a second line, and it covers
-  private repositories where you have secret scanning enabled. I could not read the AWS pages
-  describing that behavior, so verify it before relying on it.
+  scanning partner). AWS's managed policy `AWSCompromisedKeyQuarantine` exists for the case where
+  "an IAM user's credentials have been compromised or exposed publicly"; AWS applies it, and it
+  denies actions such as creating keys, users and instances. AWS's pages do not say when it is
+  applied. Layer 3 is a second line, and it covers private repositories where you have secret
+  scanning enabled.
 - Only long-lived IAM user access keys (`AKIA...`) can be deactivated. Temporary keys (`ASIA...`)
   cannot, and are reported only.
 - Deactivation can break a running service that uses the key. That is why dry-run is the default,
@@ -82,6 +85,7 @@ flowchart LR
 | `src/lambda/`                  | The webhook handler: signature check, alert parsing, decision, AWS adapters.   |
 | `src/types.ts`                 | The decision list and the audit record shape the Lambda writes.                |
 | `template.yaml`                | The SAM template (Function URL, SNS topic, DynamoDB audit table, scoped role). |
+| `scripts/`                     | `build.mjs` (one-file hook CLI) and `build-lambda.mjs` (the Lambda bundle).    |
 | `src/metrics.ts`               | Blocks pre-commit, and time from alert to deactivation.                        |
 | `demo/`                        | Offline demo: a real pre-commit block, and the handler run against fakes.      |
 
@@ -132,8 +136,10 @@ Behavior, in order:
    `Inactive`, `TagUser`, notify, audit with `leakToActionSeconds`.
 
 The role has no `DeleteAccessKey`. `UpdateAccessKey`, `GetUser`, `ListAccessKeys` and `TagUser` are
-limited to the guarded user path. `GetAccessKeyLastUsed` is granted on all resources because IAM does not scope
-it by resource, as far as I know; I could not read the AWS authorization reference to confirm.
+limited to the guarded user path. `GetAccessKeyLastUsed` is granted on all resources on purpose:
+AWS's authorization reference lists a user resource type for it, so it could be scoped, but then a
+key owned by a user outside the path would fail with AccessDenied (and cause GitHub retries)
+instead of being reported as out of scope. It only reads the owner name and last-used time.
 
 ### Config (environment of the function)
 
@@ -173,7 +179,7 @@ it by resource, as far as I know; I could not read the AWS authorization referen
 | ------------------------ | ------------------------------------------------------------- |
 | `zod`                    | Validate the webhook payload and config.                      |
 | `@adl/shared`            | Audit record helpers, hashing (workspace).                    |
-| AWS SDK v3 clients (dev) | `iam`, `sts`, `sns`, `dynamodb`, `secrets-manager`. Types and command classes; the Lambda runtime provides the SDK, so they are not bundled. |
+| AWS SDK v3 clients (dev) | `iam`, `sts`, `sns`, `dynamodb`, `secrets-manager`. Bundled into the Lambda file by `build:lambda`, as AWS recommends. |
 
 ### Security notes
 
@@ -187,17 +193,32 @@ it by resource, as far as I know; I could not read the AWS authorization referen
 - A failed Secrets Manager read is not cached, so one throttled call does not break a warm
   environment. SDK clients are built on first use, so a request rejected at the signature check
   builds none of them.
-- GitHub details were checked against the current docs on 2026-11-24. The AWS pages (IAM resource
-  scoping, Lambda runtimes, Function URL payload, SAM esbuild) could not be read in this session
-  because the repository's own agent guardrails block `docs.aws.amazon.com`. Items that depend on
-  them are marked "verify" below.
+- GitHub details were checked against the current docs on 2026-11-24, and AWS details on
+  2026-11-25 (see `docs/sources.md`). What is still unverified is listed under "Verify before you
+  deploy".
 
 ### Verify before you deploy
 
-- The Lambda runtime identifier in `template.yaml` (`nodejs22.x`) is current and includes SDK v3.
-- The Function URL event shape (version 2.0: lowercase header names, `isBase64Encoded`).
-- `iam:GetAccessKeyLastUsed` has no resource-level scoping.
-- The SAM `esbuild` build metadata matches the installed SAM CLI.
+Checked against AWS documentation on 2026-11-25:
+
+- `nodejs24.x` is a supported Lambda runtime (projected deprecation April 2028). `nodejs22.x` is
+  too, until May 2027. The template uses `nodejs24.x`.
+- The Function URL event follows the API Gateway version 2.0 format (`body`, `isBase64Encoded`,
+  `headers`). The docs do not say header names are lowercased, so the handler matches them
+  case-insensitively.
+- AWS recommends including the SDK modules your code uses in the deployment package, so the
+  handler bundles them instead of relying on the runtime's copy.
+- `sam build` works locally on the bundled folder (`dist/lambda`). The SAM esbuild builder does not,
+  because it runs `npm install` on a package that depends on a workspace package; the SAM pages
+  I could read do not document its esbuild options, so the bundle is built by `build:lambda`.
+
+Still unverified, so check them before you deploy:
+
+- That the IAM actions work with the user-path ARN scoping in the template. AWS's authorization
+  page was only partly readable (the user resource type was confirmed from a summary of it).
+- Whether AWS's quarantine policy and this function interact in any way you care about (it is
+  attached to the exposed user and restricts that user's own actions).
+- A real deployment in a sandbox account. Nothing here has run against AWS.
 
 ### Status
 

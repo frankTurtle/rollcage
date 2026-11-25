@@ -75,19 +75,11 @@ Resources:
 
   GuardFunction:
     Type: AWS::Serverless::Function
-    Metadata:
-      BuildMethod: esbuild
-      BuildProperties:
-        Minify: true
-        Target: es2022
-        EntryPoints:
-          - src/lambda/index.ts
-        External:
-          - '@aws-sdk/*'
     Properties:
-      CodeUri: .
+      # Built by `pnpm --filter @adl/secrets-guard build:lambda` (see DEPLOY.md).
+      CodeUri: dist/lambda
       Handler: index.handler
-      Runtime: nodejs22.x
+      Runtime: nodejs24.x
       Architectures: [arm64]
       MemorySize: 256
       Timeout: 30
@@ -108,7 +100,10 @@ Resources:
       Policies:
         - Version: '2012-10-17'
           Statement:
-            # IAM does not scope this action by resource, as far as we know. Verify before deploying.
+            # AWS's authorization reference lists a user resource type for this action, so it can be
+            # scoped. It is kept on '*' so a key owned by a user outside the guarded path is reported
+            # as out of scope instead of failing with AccessDenied (which would make GitHub retry).
+            # It only reads the owner name and last-used time.
             - Effect: Allow
               Action: iam:GetAccessKeyLastUsed
               Resource: '*'

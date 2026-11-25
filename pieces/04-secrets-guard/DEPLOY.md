@@ -9,7 +9,7 @@ One stack, `secrets-guard`, with:
 
 | Resource                    | Purpose                                                              |
 | --------------------------- | -------------------------------------------------------------------- |
-| Lambda function (arm64)     | The webhook handler, reserved concurrency 2.                         |
+| Lambda function (arm64, Node.js 24) | The webhook handler, reserved concurrency 2.                         |
 | Lambda Function URL         | Public HTTPS endpoint; the HMAC signature is the only gate.          |
 | Secrets Manager secret      | The generated webhook secret.                                        |
 | DynamoDB table (on demand)  | Audit records. **Retained** when the stack is deleted.               |
@@ -26,17 +26,16 @@ https://aws.amazon.com/secrets-manager/pricing/ and https://aws.amazon.com/dynam
 
 ## Before you deploy, verify
 
-- `Runtime: nodejs22.x` in `template.yaml` is a current runtime and includes AWS SDK v3.
-- The Function URL event shape matches `src/lambda/handler.ts` (payload format 2.0).
-- `iam:GetAccessKeyLastUsed` cannot be scoped to a resource.
-- `sam build` works with the `esbuild` metadata in your SAM CLI version.
+See "Verify before you deploy" in the README. In short: the IAM user-path scoping has not been run
+against AWS, and nothing here has been deployed.
 
 ## Steps
 
 ```bash
 cd pieces/04-secrets-guard
 sam validate --lint --template-file template.yaml     # offline
-sam build                                             # bundles with esbuild, offline
+pnpm --filter @adl/secrets-guard build:lambda          # bundles the handler and the AWS SDK clients
+sam build                                             # copies the bundle (dist/lambda), offline
 sam deploy --guided                                   # needs sandbox credentials; asks for parameters
 ```
 

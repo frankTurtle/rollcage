@@ -34,6 +34,12 @@ describe('AC-12 SAM template guardrails', () => {
     expect(template.match(/Resource: '\*'/g)).toHaveLength(1);
   });
 
+  it('deploys the bundle built by build:lambda, on a supported runtime', () => {
+    expect(template).toContain('CodeUri: dist/lambda');
+    expect(template).toMatch(/Runtime: nodejs(22|24)\.x/);
+    expect(read('scripts/build-lambda.mjs')).toContain("outfile: 'dist/lambda/index.mjs'");
+  });
+
   it('uses the same default user path as the code', () => {
     expect(template).toContain(`Default: ${DEFAULT_USER_PATH}`);
   });

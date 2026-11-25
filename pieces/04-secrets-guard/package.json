@@ -11,7 +11,8 @@
     "validate": "sam validate --lint --template-file template.yaml",
     "demo": "bash demo/demo.sh",
     "demo:reset": "rm -rf demo/out",
-    "build": "node scripts/build.mjs"
+    "build": "node scripts/build.mjs",
+    "build:lambda": "node scripts/build-lambda.mjs"
   },
   "dependencies": {
     "@adl/shared": "workspace:*",

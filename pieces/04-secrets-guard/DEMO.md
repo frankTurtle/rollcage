@@ -1,7 +1,8 @@
 # Demo script: 04 Secrets guard
 
-Video: "The leaked AWS key that costs $40K overnight, and the 3-layer guard that stops it."
-The $40K figure is not sourced; see `docs/sources.md` for sourced alternatives before you record.
+Video: "A leaked AWS key is an incident waiting to happen. Here is the 3-layer guard that stops it."
+The original hook quoted a dollar figure that could not be sourced, so it was dropped. Do not add a
+cost or speed figure unless it is verified in `docs/sources.md`.
 
 Run time: about 1 minute, offline, deterministic. Large terminal font.
 
@@ -16,8 +17,8 @@ gitleaks but is not a credential, and the demo masks it on screen. Nothing touch
 
 ## 0:00 to 0:20, the problem
 
-Say: "One AWS key in a public repo, and automated scanners find it in minutes." (Sources:
-`docs/sources.md`, VERIFY.) Then: "Here are three layers that stop that, and the last one reacts
+Say: "One AWS key committed to a repo is a standing risk." (No cost or speed figure: none is
+verified.) Then: "Here are three layers that stop that, and the last one reacts
 when the first two fail."
 
 ## 0:20 to 1:00, why it matters
