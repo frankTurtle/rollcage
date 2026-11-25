@@ -44,10 +44,11 @@ only, never overwrites, never commits or pushes, and pins the workflows to the e
 fetched. Preview first with `--dry-run`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/frankTurtle/rollcage/v0.3.0/install.sh | bash -s -- --dry-run
-curl -fsSL https://raw.githubusercontent.com/frankTurtle/rollcage/v0.3.0/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/frankTurtle/rollcage/main/install.sh | bash -s -- --dry-run
+curl -fsSL https://raw.githubusercontent.com/frankTurtle/rollcage/main/install.sh | bash
 ```
 
+Once a release includes `install.sh`, replace `main` in the URL with that tag or a commit SHA.
 Prefer to read it first: download `install.sh`, then `bash install.sh`. To have an AI coding agent
 do it, give it this URL and ask it to follow it:
 [docs/agent-setup.md](docs/agent-setup.md). Details and options:
