@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- One-command install: `scaffold init` and `install.sh` add the four PR guardrails to an existing
+  repository (new files only, pinned to a commit SHA). `docs/agent-setup.md` lets a coding agent do
+  it from a URL. `docs/readiness.md` records the readiness review.
+
 ## 0.3.0 (2026-11-25)
 
 - Piece 13 moves to Escapement 0.3.0: the four agents run as an Escapement `pipeline()` with linked
