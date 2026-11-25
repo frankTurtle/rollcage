@@ -4,6 +4,7 @@ import { checkRepo } from './check.js';
 import { runHook } from './hook.js';
 import type { HookDeps } from './hook.js';
 import { computeMetrics, formatMetrics } from './metrics.js';
+import { selftest } from './selftest.js';
 
 export interface CliDeps extends HookDeps {
   stdin: () => string;
@@ -14,7 +15,8 @@ export interface CliDeps extends HookDeps {
 const USAGE = `Usage:
   agent-policy hook pre|post          (reads the Claude Code hook JSON on stdin)
   agent-policy check [--root DIR] [--policy FILE]
-  agent-policy metrics --log FILE [--label TEXT]`;
+  agent-policy metrics --log FILE [--label TEXT]
+  agent-policy selftest [--root DIR]    (runs the configured PreToolUse hook against two sample calls)`;
 
 export function runCli(argv: string[], deps: CliDeps): number {
   const [command, ...rest] = argv;
@@ -37,6 +39,15 @@ export function runCli(argv: string[], deps: CliDeps): number {
         findings.length === 0 ? 'agent policy check passed' : `${findings.length} problem(s) found`,
       );
       return findings.length === 0 ? 0 : 1;
+    }
+    if (command === 'selftest') {
+      const { values } = parseArgs({
+        args: rest,
+        options: { root: { type: 'string', default: '.' } },
+      });
+      const checks = selftest(values.root);
+      for (const c of checks) deps.out(`${c.ok ? 'ok  ' : 'FAIL'} ${c.name}: ${c.detail}`);
+      return checks.every((c) => c.ok) ? 0 : 1;
     }
     if (command === 'metrics') {
       const { values } = parseArgs({

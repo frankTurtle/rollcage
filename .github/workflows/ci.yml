@@ -31,6 +31,8 @@ jobs:
       - run: pnpm coverage
       - name: Agent policy and guardrails are present
         run: pnpm policy:check
+      - name: The agent hook runs and blocks a secret read
+        run: pnpm policy:selftest
 
   dependency-review:
     if: github.event_name == 'pull_request'

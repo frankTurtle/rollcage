@@ -25,7 +25,8 @@
     "demo:03": "pnpm --filter @adl/dora-metrics demo",
     "demo:03:reset": "pnpm --filter @adl/dora-metrics demo:reset",
     "demo:04": "pnpm --filter @adl/secrets-guard demo",
-    "demo:04:reset": "pnpm --filter @adl/secrets-guard demo:reset"
+    "demo:04:reset": "pnpm --filter @adl/secrets-guard demo:reset",
+    "policy:selftest": "pnpm --filter @adl/agent-policy exec tsx src/bin.ts selftest --root ../.."
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
