@@ -102,8 +102,8 @@ describe('config', () => {
 });
 
 describe('review fix: quoted and unreadable paths', () => {
-  const quoted = (path: string, body = ' x\n+y\n') =>
-    `diff --git "a/${path}" "b/${path}"\nindex 1..2 100644\n--- "a/${path}"\n+++ "b/${path}"\n@@ -1,1 +1,2 @@\n${body}`;
+  const quoted = (path: string) =>
+    `diff --git "a/${path}" "b/${path}"\nindex 1..2 100644\n--- "a/${path}"\n+++ "b/${path}"\n@@ -1,1 +1,2 @@\n x\n+y\n`;
 
   it('decodes git-quoted paths with octal UTF-8 bytes and escapes', () => {
     const [f] = parseDiff(quoted('src/auth/caf\\303\\251.ts'));

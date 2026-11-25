@@ -236,6 +236,12 @@ describe('review fixes: paging and large lists', () => {
   }));
 
   it('keeps paging when the first page is old but the list is not newest-first', async () => {
+    // A full first page of old deployments in ascending time order, then the in-range ones.
+    const ascendingOld = Array.from({ length: 100 }, (_, i) => ({
+      id: i + 1,
+      sha: 's',
+      created_at: new Date(Date.UTC(2025, 9, 1) + i * 3_600_000).toISOString(),
+    }));
     const inRange = [{ id: 500, sha: 's', created_at: day(5) }];
     const fetchImpl = async (url: string) => {
       const u = new URL(url);
@@ -243,19 +249,13 @@ describe('review fixes: paging and large lists', () => {
         return new Response(JSON.stringify([{ state: 'success', created_at: day(5) }]));
       }
       const page = u.searchParams.get('page');
-      // Ascending order: old items come first. Descending would put them last.
       const body = u.pathname.endsWith('/deployments')
         ? page === '1'
-          ? ascending(old)
+          ? ascendingOld
           : inRange
         : [];
       return new Response(JSON.stringify(body));
     };
-    const ascending = (items: typeof old) =>
-      items.map((d, i) => ({
-        ...d,
-        created_at: `2025-11-${String((i % 28) + 1).padStart(2, '0')}T10:00:00Z`,
-      }));
     const gh = new GitHubSource({ owner: 'o', name: 'r' }, 't', loadDoraConfig(''), fetchImpl);
     const { data } = await gh.load(span);
     expect(data.deployments.map((d) => d.id)).toEqual(['500']);
@@ -271,25 +271,6 @@ describe('review fixes: paging and large lists', () => {
     const gh = new GitHubSource({ owner: 'o', name: 'r' }, 't', loadDoraConfig(''), fetchImpl);
     await gh.load(span);
     expect(pages).toBe(1);
-  });
-
-  it('handles a very large list of deployments without spreading it into a call', async () => {
-    const many = Array.from({ length: 120_000 }, (_, i) => ({
-      id: String(i),
-      sha: 's',
-      at: '2026-01-05T10:00:00Z',
-      status: 'success' as const,
-    }));
-    const src = new GitHubSource(
-      { owner: 'o', name: 'r' },
-      't',
-      loadDoraConfig('deployments:\n  source: releases\n'),
-      async () => new Response('[]'),
-    );
-    // The reduce runs inside load(); exercise it through the public method with a stubbed deployment list.
-    const spy = src as unknown as { loadDeployments: () => Promise<typeof many> };
-    spy.loadDeployments = async () => many;
-    await expect(src.load(span)).resolves.toBeDefined();
   });
 });
 

@@ -60,8 +60,7 @@ const RUN_OUTCOME: Record<string, Deployment['status']> = {
 /** True if the page's timestamps never increase from one item to the next. */
 const isNewestFirst = (items: { created_at: string }[]): boolean =>
   items.every(
-    (d, i) =>
-      i === 0 || ms(d.created_at) <= ms((items[i - 1] as { created_at: string }).created_at),
+    (d, i) => i === 0 || ms(d.created_at) <= ms(items[i - 1]?.created_at ?? d.created_at),
   );
 
 /** Map items through `fn` with at most `size` calls in flight, keeping the input order. */
@@ -179,7 +178,7 @@ export class GitHubSource implements Source {
         // Stop early only when the list is visibly newest-first. GitHub does not document the
         // order, so an ascending page must not end the paging.
         stop: (items) =>
-          isNewestFirst(items) && items.every((d) => ms(d.created_at) < range.since.getTime()),
+          items.every((d) => ms(d.created_at) < range.since.getTime()) && isNewestFirst(items),
       },
     );
     const wanted = list.filter((d) => inRange(ms(d.created_at), range));

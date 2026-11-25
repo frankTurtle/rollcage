@@ -145,20 +145,17 @@ describe('AC-9 errors', () => {
 });
 
 describe('review fixes: retries, notification failures and unreadable alerts', () => {
-  it('an already inactive key is left alone and recorded, so a retry adds no second deactivation', async () => {
-    const r = await run(event(), { active: false });
-    expect(decisions(r)).toEqual(['already-inactive']);
-    expect(r.calls.deactivated).toEqual([]);
-    expect(r.calls.tagged).toEqual([]);
-    expect(r.calls.notified).toEqual([]);
-    expect(r.entries[0]?.detail.user).toBe('leak-test');
-  });
-
-  it('is also reported in dry run', async () => {
-    expect(decisions(await run(event(), { active: false }, config({ dryRun: true })))).toEqual([
-      'already-inactive',
-    ]);
-  });
+  it.each([false, true])(
+    'an already inactive key is left alone and recorded (dryRun=%s)',
+    async (dryRun) => {
+      const r = await run(event(), { active: false }, config({ dryRun }));
+      expect(decisions(r)).toEqual(['already-inactive']);
+      expect(r.calls.deactivated).toEqual([]);
+      expect(r.calls.tagged).toEqual([]);
+      expect(r.calls.notified).toEqual([]);
+      expect(r.entries[0]?.detail.user).toBe('leak-test');
+    },
+  );
 
   it('a notification failure after deactivation is its own decision, not an error', async () => {
     const r = await run(event(), { failOn: 'notify' });

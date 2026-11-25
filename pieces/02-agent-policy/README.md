@@ -86,7 +86,10 @@ Claude Code docs on 2026-11-24 ([hooks](https://code.claude.com/docs/en/hooks),
   runtime) exits with another code, which would let the call run, so the PreToolUse entry also sets
   `"onFailure": "block"` (a handler field in the hooks docs, from Claude Code 2.1.295; check your
   version). `check` fails without it. The cost: if the hook is broken, every tool call is blocked
-  until you fix or remove the hook entry in `.claude/settings.json`.
+  until you fix or remove the hook entry in `.claude/settings.json`. Edits made through the
+  agent are blocked too, so recover from outside the session: edit the file in an editor or a plain
+  terminal, or start Claude Code with `--settings '{"disableAllHooks": true}'`, which the hooks
+  docs say overrides project and local settings files (untested here).
 - Exit 2 blocks even in `bypassPermissions` mode. A `PostToolUse` hook does not fire for a blocked
   call, so the blocking hook writes its own audit record.
 
