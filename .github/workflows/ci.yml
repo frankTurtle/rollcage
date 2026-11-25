@@ -35,7 +35,8 @@ jobs:
         run: pnpm policy:selftest
 
   dependency-review:
-    if: github.event_name == 'pull_request'
+    # The dependency graph API needs GitHub Advanced Security on private repositories.
+    if: github.event_name == 'pull_request' && !github.event.repository.private
     runs-on: ubuntu-latest
     permissions:
       contents: read
