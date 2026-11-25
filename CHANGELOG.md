@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Release prep: security contact set; the unsourced "$40K" hook dropped; AWS facts for piece 04
+  checked against AWS docs (runtime `nodejs24.x`, SDK bundled, Lambda bundled by `build:lambda`
+  because the SAM esbuild builder cannot resolve the workspace dependency); the agent-policy hook
+  gets `selftest` (`pnpm policy:selftest`) so a broken hook is caught before it blocks a session.
+
 - MVP review fixes: guard sees through wrappers with option values (`xargs -I`, `timeout -s`) and
   `find -exec`, and no longer trusts `~user` paths; the risk gate reads git-quoted (non-ASCII) paths
   and fails closed on unreadable ones; the policy check requires `onFailure: block` on the

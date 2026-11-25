@@ -4,9 +4,8 @@
 
 Do not open a public issue for a security problem.
 
-Contact: **TODO (maintainer to fill in before the repo goes public)**. Until a private
-channel is listed here, use GitHub's "Report a vulnerability" (private security advisory)
-on the repository once it is enabled.
+Contact: **security@barretnobel.com**. You can also use GitHub's "Report a vulnerability" (private
+security advisory) on the repository once it is enabled.
 
 Please include the affected piece, steps to reproduce, and the impact you see. Do not
 include real credentials in a report.

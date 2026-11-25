@@ -15,6 +15,7 @@ allowed_hosts:
   - dora.dev
   - survey.stackoverflow.co
   - about.gitlab.com
+  - docs.aws.amazon.com # read-only AWS documentation, needed to verify the secrets-guard facts
   # - your-internal-docs.example.com
 
 # Directories outside the repository that may be written (scratch space).

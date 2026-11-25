@@ -69,20 +69,21 @@ it does not replace a human reading the primary source.
   parameters match the repo-wide runs endpoint). Verify before relying on it.
 - Status: re-check before each release; API versions and limits change.
 
-## Cost and speed of leaked AWS keys (candidates for piece 04's hook)
+## Cost and speed of leaked AWS keys (not used)
 
-The "$40K overnight" figure in the video title has **no source**. A web search on 2026-11-24
-returned the items below. They were seen as search results only; **none of the pages was read**,
-so no number here may be quoted until someone reads the source.
+The "$40K overnight" figure in the original piece 04 video title had **no source and was dropped**
+(2026-11-25). On 2026-11-25 an attempt to read the candidate pages below was refused by this
+repository's own agent guardrails (their hosts are not on the allowlist), so **no figure from
+them has been verified, and none is quoted anywhere in the repo**. Do not quote them until a
+person has read them.
 
 - Tom's Hardware, "$45,000 AWS Crypto-Mining Hack Generates $800 of Monero":
   https://www.tomshardware.com/news/aws-45000-usd-bill-for-crypto-mining-hack
-  (a $45,000 bill; closest sourced alternative to the $40K hook).
 - The Register, 2023, "Cryptojackers steal AWS credentials from GitHub in 5 minutes":
   https://www.theregister.com/2023/10/30/cryptojackers-steal-aws-credentials-from-github-in-5-minutes/522761
 - Palo Alto Networks Unit 42, EleKtra-Leak research on exposed IAM keys:
   https://unit42.paloaltonetworks.com/malicious-operations-of-exposed-iam-keys-cryptojacking/
-- Status: VERIFY BEFORE PUBLISHING. Read each page and confirm the figure, the year and the wording.
+- Status: unread. VERIFY BEFORE USING.
 
 ## GitHub secret scanning (references for piece 04)
 
@@ -98,7 +99,21 @@ so no number here may be quoted until someone reads the source.
   `hide_secret` defaults to false.
 - Not confirmed: whether the **webhook** payload includes the literal secret (the page documents no
   `alert` sub-fields). The handler therefore supports fetching it over REST.
-- Not read: AWS documentation (IAM resource-level permissions, Lambda runtimes, Function URL event
-  format, SAM esbuild build, AWS's handling of exposed keys). The repository's own guardrails
-  blocked `docs.aws.amazon.com` for the research agent. Verify these before deploying.
+
 - Status: re-check before each release.
+
+## AWS documentation (references for piece 04)
+
+- Read 2026-11-25 from docs.aws.amazon.com: the IAM service authorization reference (partly read),
+  Lambda runtimes (https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html), Function URL
+  invocation (https://docs.aws.amazon.com/lambda/latest/dg/urls-invocation.html), the SAM build
+  command reference, and the managed policy AWSCompromisedKeyQuarantine
+  (https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AWSCompromisedKeyQuarantine.html).
+- Facts used: `nodejs24.x` and `nodejs22.x` are supported (projected deprecation dates April 2028
+  and May 2027, subject to change); Function URL events follow API Gateway payload format 2.0;
+  AWS recommends including the SDK modules your code uses in the package; the quarantine policy
+  exists for "compromised or exposed publicly" credentials and denies actions such as
+  `iam:CreateAccessKey`, `iam:UpdateAccessKey` and `ec2:RunInstances`.
+- Not found in the pages read: the SAM esbuild build options, and AWS's own statement about keys in
+  public GitHub repositories.
+- Status: re-check before each release; runtimes and deprecation dates change.
