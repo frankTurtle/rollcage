@@ -90,7 +90,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@<sha>
-      - uses: <owner>/ai-devsecops-library/pieces/01-pr-risk-gate@<sha>
+      - uses: <owner>/rollcage/pieces/01-pr-risk-gate@<sha>
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }} # optional
 ```

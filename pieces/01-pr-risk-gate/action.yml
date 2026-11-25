@@ -1,6 +1,6 @@
 name: PR risk gate
 description: Score pull-request risk from the diff, post one comment, and enforce test and approval rules.
-author: ai-devsecops-library
+author: rollcage
 
 inputs:
   config:

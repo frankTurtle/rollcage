@@ -1,6 +1,6 @@
 name: DORA metrics
 description: Compute the five DORA metrics from the GitHub API, with an optional before and after split.
-author: ai-devsecops-library
+author: rollcage
 
 inputs:
   config:

@@ -1,4 +1,4 @@
-title = "ai-devsecops-library gitleaks config"
+title = "rollcage gitleaks config"
 
 [extend]
 useDefault = true

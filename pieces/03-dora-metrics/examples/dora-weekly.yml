@@ -18,6 +18,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@<sha> # pin by commit SHA
-      - uses: <owner>/ai-devsecops-library/pieces/03-dora-metrics@<sha>
+      - uses: <owner>/rollcage/pieces/03-dora-metrics@<sha>
         with:
           compare-at: '2026-03-15' # the date you rolled out AI tools

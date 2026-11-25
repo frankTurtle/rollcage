@@ -1,4 +1,9 @@
-# AI DevSecOps Library: making AI-accelerated delivery safe to ship
+# Rollcage
+
+**The AI DevSecOps Library: making AI-accelerated delivery safe to ship, and measurable.**
+
+A roll cage lets a car go fast and survive the crash. This repository does the same for
+AI-assisted software delivery: guardrails you can adopt, and numbers that prove they work.
 
 Working code, tests and CI for making AI-assisted software delivery safe to ship, and for
 measuring whether it is paying off.
@@ -36,7 +41,7 @@ CI, and each has a demo script.
 ## Quickstart
 
 ```bash
-git clone <repo-url> && cd ai-devsecops-library
+git clone <repo-url> && cd rollcage
 pnpm install
 pnpm check        # lint, format check, typecheck, tests with coverage
 ```

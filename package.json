@@ -1,8 +1,8 @@
 {
-  "name": "ai-devsecops-library",
+  "name": "rollcage",
   "version": "0.0.0",
   "private": true,
-  "description": "AI DevSecOps Library: making AI-accelerated delivery safe to ship",
+  "description": "Rollcage: making AI-accelerated delivery safe to ship",
   "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@10.30.3",
