@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- README badge linking to the GitHub Marketplace listing.
+
 ## 0.6.1 (2026-11-26)
 
 - Root action renamed to `Rollcage DevSecOps Guardrails`: the name `Rollcage` is taken on GitHub, which blocked the
