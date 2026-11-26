@@ -1,6 +1,6 @@
 {
   "name": "rollcage-init",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "One-command Rollcage setup: adds PR risk gate, agent policy, DORA, secrets guard, SBOM triage and policy gates to a repository",
   "license": "MIT",
   "type": "module",

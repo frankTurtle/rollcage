@@ -4,7 +4,7 @@ Eight pieces ship as composite actions. Call them with `uses:` from any reposito
 no fork.
 
 ```yaml
-- uses: frankTurtle/rollcage/pieces/02-agent-policy@<commit sha> # v0.6.0
+- uses: frankTurtle/rollcage/pieces/02-agent-policy@<commit sha> # v0.6.1
 ```
 
 Pin to a full commit SHA and keep the version in a comment, so Dependabot can propose upgrades.
@@ -28,7 +28,7 @@ Each action's inputs are listed in its `action.yml`.
 The repository root is an action too. Pick a gate with `piece`:
 
 ```yaml
-- uses: frankTurtle/rollcage@<sha> # v0.6.0
+- uses: frankTurtle/rollcage@<sha> # v0.6.1
   with:
     piece: sbom
     fail-on: high
@@ -61,14 +61,14 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: frankTurtle/rollcage/pieces/02-agent-policy@<sha> # v0.6.0
-      - uses: frankTurtle/rollcage/pieces/04-secrets-guard@<sha> # v0.6.0
+      - uses: frankTurtle/rollcage/pieces/02-agent-policy@<sha> # v0.6.1
+      - uses: frankTurtle/rollcage/pieces/04-secrets-guard@<sha> # v0.6.1
         with:
           license: ${{ secrets.GITLEAKS_LICENSE }}
-      - uses: frankTurtle/rollcage/pieces/05-sbom-vuln-triage@<sha> # v0.6.0
-      - uses: frankTurtle/rollcage/pieces/06-policy-gates@<sha> # v0.6.0
+      - uses: frankTurtle/rollcage/pieces/05-sbom-vuln-triage@<sha> # v0.6.1
+      - uses: frankTurtle/rollcage/pieces/06-policy-gates@<sha> # v0.6.1
       - if: github.event_name == 'pull_request'
-        uses: frankTurtle/rollcage/pieces/01-pr-risk-gate@<sha> # v0.6.0
+        uses: frankTurtle/rollcage/pieces/01-pr-risk-gate@<sha> # v0.6.1
 ```
 
 Jobs that hold different permissions should stay separate, as in

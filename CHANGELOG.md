@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.6.1 (2026-11-26)
+
+- Root action renamed to `Rollcage DevSecOps Guardrails`: the name `Rollcage` is taken on GitHub, which blocked the
+  Marketplace listing. The action pins and the `rollcage-init` default move to v0.6.1.
+
 ## 0.6.0 (2026-11-26)
 
 - `rollcage-init` defaults to the v0.6.0 release.

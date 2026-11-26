@@ -1,4 +1,4 @@
-name: Rollcage
+name: Rollcage DevSecOps Guardrails
 description: 'AI DevSecOps guardrails for GitHub: PR risk, agent policy, secrets, SBOM, policy gates, DORA, provenance.'
 author: rollcage
 
@@ -68,30 +68,30 @@ runs:
   using: composite
   steps:
     - if: inputs.piece == 'risk-gate'
-      uses: frankTurtle/rollcage/pieces/01-pr-risk-gate@v0.6.0
+      uses: frankTurtle/rollcage/pieces/01-pr-risk-gate@v0.6.1
       with:
         config: ${{ inputs.config || 'risk-gate.yml' }}
         mode: ${{ inputs.mode }}
         github-token: ${{ inputs.github-token }}
     - if: inputs.piece == 'agent-policy'
-      uses: frankTurtle/rollcage/pieces/02-agent-policy@v0.6.0
+      uses: frankTurtle/rollcage/pieces/02-agent-policy@v0.6.1
       with:
         root: ${{ inputs.root || '.' }}
     - if: inputs.piece == 'dora'
-      uses: frankTurtle/rollcage/pieces/03-dora-metrics@v0.6.0
+      uses: frankTurtle/rollcage/pieces/03-dora-metrics@v0.6.1
       with:
         config: ${{ inputs.config || 'dora.yml' }}
         days: ${{ inputs.days || '90' }}
         compare-at: ${{ inputs.compare-at }}
         github-token: ${{ inputs.github-token }}
     - if: inputs.piece == 'secrets'
-      uses: frankTurtle/rollcage/pieces/04-secrets-guard@v0.6.0
+      uses: frankTurtle/rollcage/pieces/04-secrets-guard@v0.6.1
       with:
         config: ${{ inputs.config }}
         license: ${{ inputs.license }}
         github-token: ${{ inputs.github-token }}
     - if: inputs.piece == 'sbom'
-      uses: frankTurtle/rollcage/pieces/05-sbom-vuln-triage@v0.6.0
+      uses: frankTurtle/rollcage/pieces/05-sbom-vuln-triage@v0.6.1
       with:
         path: ${{ inputs.path || '.' }}
         fail-on: ${{ inputs.fail-on || 'critical' }}
@@ -99,18 +99,18 @@ runs:
         waivers: ${{ inputs.waivers }}
         live-feeds: ${{ inputs.live-feeds || 'true' }}
     - if: inputs.piece == 'policy-gates'
-      uses: frankTurtle/rollcage/pieces/06-policy-gates@v0.6.0
+      uses: frankTurtle/rollcage/pieces/06-policy-gates@v0.6.1
       with:
         path: ${{ inputs.path || '.' }}
         policy: ${{ inputs.policy }}
     - if: inputs.piece == 'ci-triage'
-      uses: frankTurtle/rollcage/pieces/07-ci-failure-triage@v0.6.0
+      uses: frankTurtle/rollcage/pieces/07-ci-failure-triage@v0.6.1
       with:
         days: ${{ inputs.days || '14' }}
         config: ${{ inputs.config || 'triage.yml' }}
         github-token: ${{ inputs.github-token }}
     - if: inputs.piece == 'provenance'
-      uses: frankTurtle/rollcage/pieces/10-provenance-signing@v0.6.0
+      uses: frankTurtle/rollcage/pieces/10-provenance-signing@v0.6.1
       with:
         artifact: ${{ inputs.artifact }}
         mode: ${{ inputs.mode || 'verify' }}

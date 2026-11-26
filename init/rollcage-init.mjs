@@ -26,7 +26,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 
-const DEFAULT_REF = 'v0.6.0';
+const DEFAULT_REF = 'v0.6.1';
 const REPO_URL = 'https://github.com/frankTurtle/rollcage';
 export const DEFAULT_PIECES = ['01', '02', '03', '04', '05', '06', '10'];
 const PIECE_NAMES = {
