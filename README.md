@@ -5,6 +5,7 @@
 [![provenance](https://img.shields.io/badge/npm-provenance-blue)](https://www.npmjs.com/package/rollcage-init#provenance)
 [![release](https://img.shields.io/github/v/release/frankTurtle/rollcage)](https://github.com/frankTurtle/rollcage/releases)
 [![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-8_reusable_actions-2088FF?logo=githubactions&logoColor=white)](docs/github-actions.md)
+[![Marketplace](https://img.shields.io/badge/Marketplace-Rollcage_DevSecOps_Guardrails-2088FF?logo=github&logoColor=white)](https://github.com/marketplace/actions/rollcage-devsecops-guardrails)
 [![license](https://img.shields.io/github/license/frankTurtle/rollcage)](LICENSE)
 
 **The AI DevSecOps Library: making AI-accelerated delivery safe to ship, and measurable.**
