@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Root `action.yml` is named "Rollcage AI DevSecOps Guardrails": the Marketplace rejected the bare name "Rollcage" as taken.
+
 ## 0.6.0 (2026-11-26)
 
 - `rollcage-init` defaults to the v0.6.0 release.

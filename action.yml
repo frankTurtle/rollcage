@@ -1,4 +1,4 @@
-name: Rollcage
+name: Rollcage AI DevSecOps Guardrails
 description: 'AI DevSecOps guardrails for GitHub: PR risk, agent policy, secrets, SBOM, policy gates, DORA, provenance.'
 author: rollcage
 
